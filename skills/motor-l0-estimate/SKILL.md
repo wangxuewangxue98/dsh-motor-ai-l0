@@ -10,7 +10,7 @@ description: >
   Motor-CAD, needs no Python, no license, no external solver.
 metadata:
   author: Motor-AI
-  version: 0.1.0
+  version: 0.1.1
   level: l0
   tier: free
 ---

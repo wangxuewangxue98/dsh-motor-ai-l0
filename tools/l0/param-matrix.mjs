@@ -38,17 +38,17 @@ import { computeTorque, computeD2L, computeLambda, validateLambda } from '../../
 export const TOOL_PARAMS = {
   power_kw: { type: 'number', required: true, description: '额定功率 (kW)' },
   speed_rpm: { type: 'number', required: true, description: '额定转速 (rpm)' },
-  voltage_v: { type: 'number', required: false, description: '电压 (V)，默认 380' },
-  poles: { type: 'number', required: false, description: '极数，缺省由转速推荐' },
-  torque_nm: { type: 'number', required: false, description: '额定转矩 (Nm)，缺省由 9550·P/n 推算' },
+  voltage_v: { type: 'number', description: '电压 (V)，默认 380' },
+  poles: { type: 'number', description: '极数，缺省由转速推荐' },
+  torque_nm: { type: 'number', description: '额定转矩 (Nm)，缺省由 9550·P/n 推算' },
   cooling: {
-    type: 'string', required: false,
+    type: 'string',
     description: `冷却方式，默认 forced_air。合法值: ${COOLING_ALLOWED.join('/')}`,
   },
-  stator_od_limit: { type: 'number', required: false, description: '定子外径上限 (mm)，默认 450' },
-  base_diameter: { type: 'number', required: false, description: '基准内径中心 (mm)，覆盖经验估算' },
-  base_length: { type: 'number', required: false, description: '基准铁心长度中心 (mm)' },
-  count: { type: 'number', required: false, description: '目标方案数，默认 20' },
+  stator_od_limit: { type: 'number', description: '定子外径上限 (mm)，默认 450' },
+  base_diameter: { type: 'number', description: '基准内径中心 (mm)，覆盖经验估算' },
+  base_length: { type: 'number', description: '基准铁心长度中心 (mm)' },
+  count: { type: 'number', description: '目标方案数，默认 20' },
 }
 
 /** 转速 → 推荐极数（ determinate 场景识别的简化版，对齐 determine_scenario 的选型直觉） */

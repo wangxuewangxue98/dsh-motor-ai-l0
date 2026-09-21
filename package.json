@@ -1,6 +1,6 @@
 {
   "name": "dsh-motor-ai-l0",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "main": "./index.mjs",
   "description": "Motor-AI DSH 插件 · 电机设计专家 L0 快速预筛层（纯 JS 经验公式，零求解器依赖）",

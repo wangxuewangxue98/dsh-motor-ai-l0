@@ -30,9 +30,9 @@ export const TOOL_PARAMS = {
     type: 'array', required: true,
     description: '参数组合列表，每项须含 stator_od/poles/voltage/speed 四个 L1 严格必填字段',
   },
-  top_n: { type: 'number', required: false, description: '返回前 N 个结果，默认全部' },
+  top_n: { type: 'number', description: '返回前 N 个结果，默认全部' },
   sort_by: {
-    type: 'string', required: false,
+    type: 'string',
     description: '排序字段：efficiency / torque_density / temp_rise，默认 efficiency',
   },
 }

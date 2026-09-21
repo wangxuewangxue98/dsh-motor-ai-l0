@@ -23,16 +23,16 @@ import { normalizeSpec } from '../../lib/param-schema.mjs'
 
 /** 工具入参声明 */
 export const TOOL_PARAMS = {
-  params: { type: 'object', required: false, description: '单个设计参数对象（与 params_list 二选一）' },
-  params_list: { type: 'array', required: false, description: '参数组合列表（与 params 二选一）' },
+  params: { type: 'object', additionalProperties: true, description: '单个设计参数对象（与 params_list 二选一）' },
+  params_list: { type: 'array', description: '参数组合列表（与 params 二选一）' },
   escalate: {
-    type: 'array', required: false,
+    type: 'array',
     description: `提升为 failed 的规则 id，可选: ${ESCALATABLE_RULES.join('/')}`,
   },
-  insulation_class: { type: 'string', required: false, description: '绝缘等级 B/F/H，默认 F' },
-  air_gap_flux: { type: 'number', required: false, description: '气隙磁密基准 T，默认 0.80' },
-  include_thermal: { type: 'boolean', required: false, description: '是否执行温升校验，默认 true' },
-  include_reports: { type: 'boolean', required: false, description: '批量模式是否回传逐条报告，默认 false' },
+  insulation_class: { type: 'string', description: '绝缘等级 B/F/H，默认 F' },
+  air_gap_flux: { type: 'number', description: '气隙磁密基准 T，默认 0.80' },
+  include_thermal: { type: 'boolean', description: '是否执行温升校验，默认 true' },
+  include_reports: { type: 'boolean', description: '批量模式是否回传逐条报告，默认 false' },
 }
 
 /**

@@ -99,12 +99,6 @@ export async function apply(ctx, config) {
     ` | 工具 ${tools.join(',')}` +
     ` | 付费等级 ${tierOf(config.level)}`
   )
-
-  return {
-    // 供外部/自检查询当前层级可用性
-    isLevelEnabled: (target) => isLevelEnabled(config, target),
-    tier: tierOf(config.level),
-  }
 }
 
 export default { name, inject, Config, apply }
