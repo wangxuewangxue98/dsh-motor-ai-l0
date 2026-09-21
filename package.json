@@ -47,10 +47,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wangxuewangxue98/dsh-motor-design.git"
+    "url": "git+https://github.com/wangxuewangxue98/dsh-motor-ai-l0.git"
   },
   "bugs": {
-    "url": "https://github.com/wangxuewangxue98/dsh-motor-design/issues"
+    "url": "https://github.com/wangxuewangxue98/dsh-motor-ai-l0/issues"
   },
-  "homepage": "https://github.com/wangxuewangxue98/dsh-motor-design#readme"
+  "homepage": "https://github.com/wangxuewangxue98/dsh-motor-ai-l0#readme"
 }
