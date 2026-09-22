@@ -39,6 +39,9 @@ import {
   toothFluxDensity, yokeFluxDensity,
 } from '../lib/design-rules.mjs'
 import { evaluateSuite, makeBaseline, compareBaseline } from '../lib/regression-gate.mjs'
+import {
+  TELEM_FIELDS, sanitizeTelemetry, aggregateUsage,
+} from '../lib/telemetry.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const results = []
@@ -618,6 +621,47 @@ check('gate: 基线快照已生成且案例齐全', () => {
     must(base.metrics?.[c.id], `基线缺案例 ${c.id}`)
   }
   return `${Object.keys(base.metrics).length} 个案例已快照`
+})
+
+// ---------- 50~52. 脱敏聚合指标回传（v3 option-2/3）----------
+check('telemetry: 白名单字段集合固定且不含设计/隐私键', () => {
+  const forbidden = [
+    'stator_od', 'poles', 'efficiency', 'temp_rise', 'total_loss',
+    'params', 'prompt', 'cwd', 'workdir', 'apiKey', 'token', 'client_id',
+  ]
+  const leaked = forbidden.filter((k) => TELEM_FIELDS.includes(k))
+  must(leaked.length === 0, `白名单混入设计/隐私键: ${leaked.join(',')}`)
+  must(TELEM_FIELDS.includes('tool') && TELEM_FIELDS.includes('ok'), '缺核心统计键')
+  return `白名单 ${TELEM_FIELDS.length} 键，零设计/隐私泄漏`
+})
+
+check('telemetry: sanitize 丢弃非白名单键，error 归一为类别（不回原文）', () => {
+  const rec = {
+    ts: '2026-09-22T00:00:00Z', tool: 'motor_l0_estimate', ok: false,
+    elapsed_ms: 3, n: 20,
+    stator_od: 180, poles: 8, efficiency: 95, apiKey: 'sk-SECRET',
+    error: 'power_kw must be positive at C:\\secret\\sk-abc line2 line3 very long',
+  }
+  const s = sanitizeTelemetry(rec)
+  must(!('stator_od' in s) && !('poles' in s) && !('efficiency' in s) && !('apiKey' in s),
+    '设计/密钥字段未被丢弃')
+  must(s.error === 'invalid_argument', `error 应归一为类别，实际 ${s.error}`)
+  must(!/sk-abc|C:\\|line2/.test(s.error), 'error 类别泄漏了原文（路径/密钥）')
+  must(s.tool === 'motor_l0_estimate' && s.ok === false && s.elapsed_ms === 3, '白名单字段丢失')
+  return `丢弃 4 个非白名单键，error → "${s.error}"`
+})
+
+check('telemetry: aggregateUsage 只出聚合统计量，无逐条/无密钥', () => {
+  const p = aggregateUsage([
+    { tool: 'motor_l0_estimate', ok: true, elapsed_ms: 3, n: 20, ts: '2026-09-22T00:00:00Z' },
+    { tool: 'motor_l0_estimate', ok: false, elapsed_ms: 7, n: 10, error: 'timeout at C:/x', ts: '2026-09-22T00:00:01Z' },
+    { tool: 'motor_design_validate', ok: true, elapsed_ms: 2, n: 40, ts: '2026-09-22T00:00:02Z' },
+  ], { pluginVersion: '0.1.5' })
+  must(p.calls_total === 3 && p.ok_total === 2 && p.failed_total === 1, '次数统计错误')
+  must(p.by_tool['motor_l0_estimate'].calls === 2, '按工具聚合错误')
+  must(p.plugin_version === '0.1.5', '来源版本缺失')
+  must(!JSON.stringify(p).match(/sk-|C:\\\/x|stator_od/), 'payload 泄漏密钥/路径/设计字段')
+  return `3 调用聚合 | by_tool ${Object.keys(p.by_tool).length} 类 | 零泄漏`
 })
 
 // ---------- 输出 ----------

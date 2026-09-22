@@ -5,6 +5,38 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.1.5] - 2026-09-22
+
+### 新增
+- **脱敏聚合指标回传（显式可选，默认关闭）**：新增 `lib/telemetry.mjs`（零新增依赖，
+  仅用 `node:fs`/`node:os`/全局 `fetch`），在 0.1.4 的本地 `usage.jsonl` 之上补一条
+  **可选的**脱敏上报通道，配套管理端「DSH 插件管理 · 插件使用情况」卡片闭环：
+  - `sanitizeTelemetry()`：字段白名单 `TELEM_FIELDS`（tool/ok/elapsed_ms/n/success/
+    failed/warning/sort_by/top_n/error/ts）单一真源硬编码；逐条记录裁剪到只剩白名单，
+    设计参数正文、结果明细（效率/温升/损耗）、提示词、工作目录、密钥、client_id 一律丢弃。
+  - `aggregateUsage()`：把脱敏记录**按工具聚合成统计量**（调用次数/成败/耗时分布/规模总和/
+    成功速率/来源版本），只上聚合值、不上逐条明细；平台元数据仅保留 OS + node 大版本。
+  - `reportTelemetry()`：分批（`telemetryBatchSize`）POST 到 `telemetryEndpoint`，
+    按字节 offset 增量推进，**HTTP 失败/超时不推进 offset（下批重报）且静默降级**，
+    绝不影响工具主流程；`attachSessionTelemetry()` 运行时探测 DSH Runtime 的
+    `sessionTelemetry` 瀑布并附带（不静态 `inject`，规避 apiProxy 永久 pending 事故）。
+- **Config 新增 5 个字段**（`index.mjs`）：`telemetryEnabled`（默认 `false`）、
+  `telemetryEndpoint`（默认 `''`）、`telemetryBatchSize`（默认 50）、
+  `telemetryIntervalSec`（默认 300，0=仅退出 flush）、`sessionTelemetry`（默认 `auto`）。
+  **须 `telemetryEnabled=true` 且 `telemetryEndpoint` 非空才真正启用**（显式 opt-in）。
+- **`apply()` 生命周期**：`setupTelemetry()` 周期 flush + 进程退出（SIGTERM/SIGINT/
+  beforeExit）flush 一次；启动日志追加「脱敏回传 on/off → 端点」状态。
+
+### 合规底线
+- 默认全关：不配置 = 零外发，`usage.jsonl` 照本地记录，与 0.1.4 行为逐字节一致（零回归）。
+- 只回传白名单统计量；`error` 字段截断到 80 字并去换行/路径，避免夹带参数/密钥。
+- 逐条明细只在本机（`usage.jsonl`），外发的是聚合 payload。
+
+### 说明
+- 本版本聚焦 **信息回传能力（v3 定案 option-2 + option-3）**，未改动 L0 求解/校验/
+  口径逻辑，49 项回归基线不受影响（`node scripts/verify.mjs` 全绿）。
+
+
 ## [0.1.4] - 2026-09-22
 
 ### 新增
