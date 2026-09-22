@@ -25,7 +25,7 @@
  */
 
 import {
-  idRatio, SLOT_MAP, baseTurns, empiricalBaseSize, rotorOd, toothWidth,
+  idRatio, idRatioByPoles, isPmsmType, SLOT_MAP, baseTurns, empiricalBaseSize, rotorOd, toothWidth,
   yokeThickness, shaftDia, empiricalAirGap, fitLambdaWithinRange,
   round1, round2, clamp,
 } from '../../lib/motor-constants.mjs'
@@ -41,6 +41,13 @@ export const TOOL_PARAMS = {
   speed_rpm: { type: 'number', required: true, description: '额定转速 (rpm)' },
   voltage_v: { type: 'number', description: '电压 (V)，默认 380' },
   poles: { type: 'number', description: '极数，缺省由转速推荐' },
+  motor_type: {
+    type: 'string',
+    description:
+      '电机类型（opt-in）。传 PMSM/BLDC/IPM 或中文别名时，内径比按永磁生产口径 ' +
+      '0.72+0.010(p−2) 钳[0.70,0.80] 生成，更贴合 PMSM 真实几何；不传则维持 legacy 口径 ' +
+      '0.55+0.03(p−2)（与程序 focused_scan 一致，零回归）。',
+  },
   torque_nm: { type: 'number', description: '额定转矩 (Nm)，缺省由 9550·P/n 推算' },
   cooling: {
     type: 'string',
@@ -105,6 +112,13 @@ export function buildParamMatrix(rawSpec, config = {}) {
   const odLimit = spec.stator_od_limit ?? 450
   const count = Math.min(maxMatrixSize, Math.max(1, Math.floor(spec.count ?? 20)))
 
+  // ---- PMSM 口径开关（P0，0.1.4）----
+  // 缺省 → legacy 口径 idRatio(pole)=0.55+0.03(p−2)，与 0.1.3 / 程序 focused_scan 逐字节一致（零回归）；
+  // 显式传 PMSM/BLDC/IPM（含中文别名）→ is_pm 生产口径 0.72+0.010(p−2) 钳[0.70,0.80]，更贴合 PMSM 真实几何。
+  const motorType = spec.motor_type ?? spec.motorType
+  const usePm = isPmsmType(motorType)
+  const ratioOf = (pole) => (usePm ? idRatioByPoles(pole, { isPm: true }) : idRatio(pole))
+
   // ---- 基准尺寸中心（类比模式）----
   const fallback = empiricalBaseSize(torqueNm)
   const baseD = round1(spec.base_diameter ?? fallback.d)
@@ -134,12 +148,12 @@ export function buildParamMatrix(rawSpec, config = {}) {
         // 外径超限：不丢弃候选，而是把外径夹到上限并反算内径 ——
         // 用户既然给了外径限制，就必须在限制内给出可行方案；
         // 直接 continue 会在「D²L 基准尺寸偏大 + 限制偏紧」时产出空矩阵。
-        let od = Math.round(d / idRatio(pole))
+        let od = Math.round(d / ratioOf(pole))
         let dEff = d
         let odClamped = false
         if (od > odLimit) {
           od = Math.round(odLimit)
-          dEff = round1(od * idRatio(pole))
+          dEff = round1(od * ratioOf(pole))
           odClamped = true
         }
 
@@ -180,6 +194,9 @@ export function buildParamMatrix(rawSpec, config = {}) {
           power_kw: powerKw,
           torque_nm: torqueNm,
           cooling,
+          // PMSM 场景显式传入时标记；缺省（motorType=undefined）不产生该键
+          // → 默认路径的行对象与 0.1.3 逐字节零回归（否则内存对象会多挂 undefined 键）
+          ...(motorType !== undefined ? { motor_type: motorType } : {}),
           // ---- 物理核验 ----
           _physics: {
             d_squared_l: d2l,
@@ -228,7 +245,11 @@ export function buildParamMatrix(rawSpec, config = {}) {
     total: matrix.length,
     returned: returned.length,
     truncated,
-    spec: { power_kw: powerKw, speed_rpm: speedRpm, voltage_v: voltage, poles, torque_nm: torqueNm, cooling, count },
+    spec: {
+      power_kw: powerKw, speed_rpm: speedRpm, voltage_v: voltage, poles,
+      ...(motorType !== undefined ? { motor_type: motorType } : {}),
+      torque_nm: torqueNm, cooling, count,
+    },
     applied,
   }
 }
