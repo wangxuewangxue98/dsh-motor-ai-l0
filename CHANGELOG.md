@@ -5,6 +5,62 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.1.3] - 2026-09-22
+
+### 新增
+- **本地用量统计（零依赖 JSONL）**：每次工具调用向
+  `~/.dsh/storages/dsh-motor-ai-l0/usage.jsonl` 追加一行元数据
+  （`ts` / `tool` / `ok` / `elapsed_ms` / `n` / `failed` 等）——只记次数、耗时、
+  规模与成败，**不记设计参数与结果内容**（行业 Know-how 留在会话内）。
+  新增配置项 `usageLog`（默认开）；新增 `lib/usage-log.mjs`（所有 IO 静默降级，
+  绝不影响工具主流程）。数据可直接用脚本聚合，或作为社区统计面板
+  （`dsh-usage-statistics-panel` / `dsh-usage-unified` 等）的本地数据源。
+  > 刻意**不采用** `inject: ['telemetry']`：核心遥测服务实名是 `sessionTelemetry`
+  > （`dsh-session-telemetry-otel`），不存在名为 `telemetry` 的可注入服务，
+  > 照抄会令插件永久 pending（同 apiProxy 事故机理）。
+
+### 变更
+- **工具链自描述修复**：三个工具的 `description` 显式声明流水线顺序与输入契约——
+  `motor_l0_estimate` 写死「`params_list` 必须由 `motor_param_matrix` 生成，
+  不接受散装命名参数」（实测首调必败点），`motor_param_matrix` /
+  `motor_design_validate` 双向标注上下游。
+- **SKILL 触发精确化**：`SKILL.md` frontmatter 新增 `whenToUse`（英文触发场景，
+  runtime `SkillEntry.whenToUse` 实锤支持）与 `user-invocable: true`
+  （可 `/motor-l0-estimate` 手动触发；注意必须用 kebab-case，
+  camelCase `userInvocable` 会被 loader 当 legacy 键拒绝）；`description`
+  补中文触发词（电机设计/估算/选型/参数矩阵/方案初筛）。
+
+## [0.1.2] - 2026-09-22
+
+### 变更
+- **定位升级**：由「L0 快速预筛层」升级为「电机AI辅助设计软件插件」，覆盖电机设计全流程
+  （需求解析 → 参数识别 → 候选矩阵 → L0/L1/L2 解算 → Top10 与校验 → 完整方案）；
+  L1 RMxprt / L2 Motor-CAD 明确标注为**可选**精算工具。
+- `package.json` 的 `description` 与 `keywords` 同步更新
+  （keywords 新增 `dsh` / `motor-ai` / `l0-estimate` / `rmxprt` / `motor-cad`）。
+
+### 文档
+- **README 重构（对外）**：新增「快速开始」（可复制的 npx 安装命令 + 三工具标准流水线 + 踩坑提示）、
+  「配置」表（11 项逐条说明）、「已知精度边界」；内部工程内容移出，正文精简至对外可读规模。
+  - 补充关键提示：`motor_l0_estimate` 只接受 `params_list`，**不接受** `power_kw` / `speed_rpm`
+    等散装命名参数，须先用 `motor_param_matrix` 生成矩阵。
+  - 修正安装命令：`dsh` 未进 PATH 时须用 `npx -y @deepseek-ai/dsh plugin ...`。
+- **新增 `docs/ENGINEERING.md`**（工程内参）：目录结构（同步至真实文件清单，含
+  `surrogate-engine.mjs` / `models/` / `tests/` / `knowledge-sync/` / `manifest.json` / `assets/`）、
+  字段契约 Param 锁、12 条校验规则、与 Python 体系 3 处差异、6 项资料稿偏差修正、W4 复盘、路线图。
+- **新增 `docs/QUALITY-GATE.md`**（质量门）：两道门 + divergence 诊断、5 项偏差根因、
+  首轮实算对照、待校准清单与翻转判据。
+- **新增 `LICENSE`（MIT）**：`package.json` 早已声明 `"license": "MIT"` 但仓库缺少许可文件，
+  本次补齐并加入 `files`。
+
+### 修复
+- **字段笔误**：`L1_MIRROR_FIELDS` 实为 **7** 项（旧文档写 8 项）；
+  `l1_efficiency_proxy` 属诊断列 `L1_DIAG_FIELDS`，不是镜像字段。
+- **路线图状态修正**：W5 由「待开始」更正为「完成」（代理模型 / SKILL.md / release.mjs 均已交付）；
+  W6 由「待开始」更正为「部分完成」（npm 已发布）。
+- `index.mjs` 头部过期注释（「本阶段不注册任何 tool」）更正为「注册 3 个 L0 工具」；
+  `tempRiseRange` 语义描述澄清为「`max_temp` 钳位区间（°C），非 L0 温升（K）」。
+
 ## [0.1.1] - 2026-09-21
 
 ### 修复

@@ -20,6 +20,7 @@
 import { validateDesign, validateDesignBatch, RULE_CATALOG, ESCALATABLE_RULES }
   from '../../lib/design-rules.mjs'
 import { normalizeSpec } from '../../lib/param-schema.mjs'
+import { getUsageSink, logUsage } from '../../lib/usage-log.mjs'
 
 /** 工具入参声明 */
 export const TOOL_PARAMS = {
@@ -116,18 +117,31 @@ export async function registerDesignValidate(ctx, config = {}) {
     name: 'motor_design_validate',
     description:
       '校验电机设计参数的物理一致性，返回 passed / warning / failed 三级结论。\n' +
+      '输入 params_list 应来自 motor_param_matrix 的产出（每项含 16 个 L1 顶层字段）。\n' +
       '覆盖几何链、气隙、内外径比、长径比、极槽配合、并联支路、齿轭磁密、槽形、\n' +
       '电频率、转子轭厚、温升限值共 12 组规则。\n' +
-      '典型用法：先对参数矩阵批量校验，把 failed 项剔除后再交给 motor_l0_estimate 估算排序。',
+      '典型用法：流水线第二步——先对参数矩阵批量校验，把 failed 项剔除后\n' +
+      '再交给 motor_l0_estimate 估算排序。',
     parameters: TOOL_PARAMS,
     output: {
       schema: { type: 'string' },
       render: (_args, value) => [{ type: 'text', text: value }],
     },
     async execute(args) {
+      const t0 = Date.now()
       try {
-        return JSON.stringify(runDesignValidate(args, config), null, 2)
+        const result = runDesignValidate(args, config)
+        logUsage(getUsageSink(config), {
+          tool: 'motor_design_validate', ok: true, elapsed_ms: Date.now() - t0,
+          n: args?.params_list?.length ?? (args?.params ? 1 : 0),
+          failed: result?.summary?.failed, warning: result?.summary?.warning,
+        })
+        return JSON.stringify(result, null, 2)
       } catch (err) {
+        logUsage(getUsageSink(config), {
+          tool: 'motor_design_validate', ok: false, elapsed_ms: Date.now() - t0,
+          error: String(err?.message ?? err),
+        })
         return JSON.stringify({ error: true, message: String(err?.message ?? err) }, null, 2)
       }
     },

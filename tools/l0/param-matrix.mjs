@@ -33,6 +33,7 @@ import {
   normalizeSpec, assertMatrixShape, COOLING_ALLOWED, buildHandoff,
 } from '../../lib/param-schema.mjs'
 import { computeTorque, computeD2L, computeLambda, validateLambda } from '../../lib/formula-engine.mjs'
+import { getUsageSink, logUsage } from '../../lib/usage-log.mjs'
 
 /** 工具入参声明（与 defineTool.parameters 保持一对一，避免两边漂移） */
 export const TOOL_PARAMS = {
@@ -245,9 +246,11 @@ export async function registerParamMatrix(ctx, config = {}) {
   ctx.tools.register(defineTool({
     name: 'motor_param_matrix',
     description:
-      '根据设计需求规格生成电机参数扫描矩阵（聚焦扫描）。\n' +
+      '根据设计需求规格生成电机参数扫描矩阵（聚焦扫描）——电机设计流水线的第一步。\n' +
       '输入额定功率、转速、电压等规格，输出可直接喂给 L1 求解器的参数组合列表。\n' +
       '每个组合严格包含 L1 所需的 16 个顶层字段与 _physics 物理核验字段。\n' +
+      '产出可直接作为 params_list 传给 motor_design_validate（先校验剔除 failed）\n' +
+      '和 motor_l0_estimate（再估算排序），三者构成标准流水线。\n' +
       '本工具为纯本地计算，毫秒级返回，不调用任何外部求解器。',
     parameters: TOOL_PARAMS,
     output: {
@@ -255,10 +258,19 @@ export async function registerParamMatrix(ctx, config = {}) {
       render: (_args, value) => [{ type: 'text', text: value }],
     },
     async execute(args) {
+      const t0 = Date.now()
       try {
         const result = buildParamMatrix(args, config)
+        logUsage(getUsageSink(config), {
+          tool: 'motor_param_matrix', ok: true, elapsed_ms: Date.now() - t0,
+          n: result?.total ?? result?.matrix?.length ?? 0,
+        })
         return JSON.stringify(result, null, 2)
       } catch (err) {
+        logUsage(getUsageSink(config), {
+          tool: 'motor_param_matrix', ok: false, elapsed_ms: Date.now() - t0,
+          error: String(err?.message ?? err),
+        })
         return JSON.stringify({ error: true, message: String(err?.message ?? err) }, null, 2)
       }
     },
