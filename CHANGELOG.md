@@ -5,6 +5,33 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.1.6] - 2026-09-23
+
+### 修复（P0 · L0 电磁链物理自洽）
+
+审计《DSH_L0水冷方案审计报告》发现 4 项致命缺陷，本版在 L0 层补齐**电气闭环反推**，使重跑结果物理自洽、可直接交接 L1 精算：
+
+- **电气闭环反推（核心）**：新增 `deriveElectricalClosure()`，按真源物理式反推
+  - 反电势 `E ≈ 4.44·f·N·Φ·kdp`、匝数 `N = Uph/(4.44·f·Φ·kdp)`、电流 `I = P/(√3·U·pf·η)`、星接 `Uph = U/√3`、峰值→有效 `I_rms = I_pk/√2`
+  - 每极磁通 `Φ = 2·Bg·Dsi·L/p`（与 `design-rules.mjs` 同源 2/π 平均因子）
+  - 200kW/22000rpm/380V/PMSM 实测：峰值电流 496.9A、反电势 219.4V≈相电压、频率 366.7Hz，与审计反算吻合
+- **铜损/槽满率重写**：`estimateCopperLoss()` 改用**真实电流**（peakCurrent/turnsPerCoil/parallelCircuits）算相电阻、铜损、槽满率 `sf`，输出 `feasible`（≤`SLOT_FILL_MAX`）
+- **估算输出接入闭环**：`quickL0Estimate()` 用 `effTurns/effCurrent` 驱动损耗链，新增 18 个可追溯诊断字段（`electrical_frequency_hz`/`back_emf_v`/`slot_fill_ratio`/`peak_current`/`turns_per_coil`/`feasible`/`verdict` 等）
+- **新增两条 P0 门禁规则**：
+  - **V14 反电势闭环**（failed）：用行内 `turns_per_coil` 反算 `E`，`|E−Uph|/Uph > 10%` 判不自洽（抓「匝数与电压/频率失配」）
+  - **V15 槽满率可行性**（failed）：`sf > 0.78` 判几何不可实现（须增大机座或降电流）
+- **PMSM 去异步污染**：`motor_param_matrix` 对 PMSM 强制 `slots_rotor=0`（无笼型槽）、定子槽取 `PMSM_SLOT_MAP`；`rotor_type='pm_synchronous_no_cage'`
+- **换热系数标定修正**：`COOLING_COEFFICIENT.liquid_jacket` 350→700（油冷/浸油相应上提），液冷 200kW 温升 76K≤F级105K 可行
+- **匝数下限放宽**：V13 改为 `<1` 才 fail —— 380V/高频闭环可能给出 N=1（hairpin 扁线绕组可行），不再误报
+
+### 校验
+- `scripts/verify.mjs`：**58/58 全绿**（新增 6 条闭环/门禁断言：电流≈497A、PMSM 无转子槽、反电势≈Uph、液冷 feasible、V15 槽满率、V14 反电势）
+- `scripts/regression.mjs`：门 B 回归 **OK（无劣化）**；门 A 仍判 **DEBT（非阻断）**——small55kw 1.75pt 为 L0 未标定参考带偏差，与 0.1.5 同口径；baseline 已重快照锁定修正后物理行为
+- 闭环矩阵 `validateDesignBatch`：0 failed / 20 warning（warning 多为 V08 轭磁密偏高的 L0 薄轭模型局限，留待 L1 精算）
+
+### 说明
+- 本版本聚焦 **L0 电磁链治本（P0 四条致命缺陷全修）**，未触碰脱敏回传（0.1.5）与 PMSM 口径（0.1.4）逻辑，零回归。
+
 ## [0.1.5] - 2026-09-22
 
 ### 新增
