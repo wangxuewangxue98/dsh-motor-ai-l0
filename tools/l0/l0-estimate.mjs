@@ -134,6 +134,10 @@ export function runL0Estimate(rawArgs, config = {}) {
           sorted_by: sortBy,
           sort_order: ascending ? 'asc' : 'desc',
           l0_mode: 'surrogate',
+          surrogate_experimental: model.experimental === true,
+          surrogate_warning: model.experimental === true
+            ? 'surrogate 通道为实验特性：训练域与真实机座不匹配且 cv_r2 偏低，结果仅供参考，请勿直接用于排序决策'
+            : undefined,
           surrogate_fallbacks: surrogateFallbacks,
           surrogate_model_version: model.version,
           fields: { native: L0_NATIVE_FIELDS, mirror: L1_MIRROR_FIELDS },

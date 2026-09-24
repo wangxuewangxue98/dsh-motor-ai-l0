@@ -517,6 +517,29 @@ check('validate: 硬几何规则能抓到明显错误', () => {
   return '几何倒置 / 支路不整除 均被抓到'
 })
 
+check('validate: V06 补充 a ≤ q（每极每相槽数）约束（p=4/Qs=36 ⇒ q=3, a∈{1,2}）', () => {
+  const base = {
+    stator_od: 260, stator_id: 170, rotor_od: 169, shaft_dia: 59,
+    core_length: 155, air_gap: 0.5, tooth_width: 7.42, yoke_thickness: 18,
+    poles: 4, voltage: 380, speed: 1500, slots_stator: 36, slots_rotor: 0,
+    turns_per_coil: 20, power_kw: 15,
+  }
+  // a=4：整除 4 ✓，但 a > q=3 —— 旧实现放行，新判据必须拦截
+  const a4 = validateDesign({ ...base, parallel_circuits: 4 })
+  must(a4.issues.some((i) => i.rule === 'V06' && i.level === 'failed'),
+    `a=4 > q=3 应判 failed，实际 ${JSON.stringify(a4.issues.filter((i) => i.rule === 'V06'))}`)
+  must(a4.metrics.q_slots_per_pole_per_phase === 3, '应输出 q=3 指标')
+  // a=2：整除 4 ✓ 且 ≤ 3 ✓ —— 必须放行
+  const a2 = validateDesign({ ...base, parallel_circuits: 2 })
+  must(!a2.issues.some((i) => i.rule === 'V06' && i.level === 'failed'),
+    `a=2 ≤ q=3 应放行，实际 ${JSON.stringify(a2.issues.filter((i) => i.rule === 'V06'))}`)
+  // a=3：不整除 4 —— 旧判据仍应拦截（回归保护）
+  const a3 = validateDesign({ ...base, parallel_circuits: 3 })
+  must(a3.issues.some((i) => i.rule === 'V06' && i.level === 'failed'),
+    'a=3 不整除 p=4 应判 failed')
+  return 'a=4 拦截 / a=2 放行 / a=3 整除判据回归保护 均通过'
+})
+
 check('validate: 缺功率信息时 V12 显式跳过而非静默通过', () => {
   const r = validateDesign({
     stator_od: 260, stator_id: 170, rotor_od: 169, shaft_dia: 59,

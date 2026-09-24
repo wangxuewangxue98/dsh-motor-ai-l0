@@ -5,6 +5,19 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [Unreleased] — 0.1.7 后 P0/P1 修复批次（插件分析报告 2026-09-24）
+
+### 修复
+- **`estimateTotalLoss()` 量纲修复**（`lib/surrogate-engine.mjs`）：`efficiency` 是百分数口径（91.34=91.34%），旧实现 `powerW*(1/efficiency-1)` 按小数口径计算，15kW/η91.34% 会得到 **−14835.78W**（负损耗）；现先归一到 [0,1] 再反推，同输入得 +1422.17W，并增加 η≤0 或 η≥100% 的防护（返回 0 交公式通道兜底）
+- **`V06` 补充 `a ≤ q = Qs/(3p)` 判据**（`lib/design-rules.mjs`）：旧实现只校验 `a|p`，会放行 `p=4/Qs=36/a=4`（q=3）这类支路无法分配的不可实现设计；现整数槽下 `a>q` 判 `failed`，分数槽（q 非整数）不在此判据范围。规则注册表/`ENGINEERING.md`/skill 参考文档同步更新
+
+### 变更
+- **surrogate 通道标注实验特性**：`models/l0_surrogate_family.json` 增加 `experimental: true` 与 `experimental_note`（训练域 od_range≈612~2651mm 与真实中小机座 100~500mm 不匹配、PMSM 段 cv_r2≈0、特征含 l0_eff 泄漏）；`motor_l0_estimate` 工具输出新增 `surrogate_experimental` / `surrogate_warning` 字段；README 增加 ⚠️ 标注。排序决策请使用默认公式通道
+- **仓库卫生**：`git rm --cached` 移除历史误入库的 `dist/`（4 文件，含 _debug*.py 与 v0.1.0 tar.gz）与 `metadata/publish-log.json`（本地文件保留，`.gitignore` 规则自此生效）
+
+### 校验
+- `scripts/verify.mjs`：**60/60 全绿**（新增 V06 `a≤q` 三态断言：a=4 拦截 / a=2 放行 / a=3 整除判据回归保护）
+
 ## [0.1.7] - 2026-09-23
 
 ### 修复（L0 薄轭模型失真 · V08 轭磁密门禁硬化）

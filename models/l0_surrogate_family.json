@@ -1,6 +1,8 @@
 {
   "schema": "l0_surrogate_family",
   "version": "1.0.0",
+  "experimental": true,
+  "experimental_note": "EXPERIMENTAL: 训练样本 od_range(约612~2651mm) 与真实中小机座(100~500mm)不匹配，段外样本全部降级；PMSM 段 cv_r2≈0，feature_names 含 l0_eff（公式效率泄漏）。结果仅供参考，禁止直接用于排序决策。",
   "note": "D 路线分族模型工件；异步小/中/大机 + PMSM 小/中/大机",
   "gate": [50.0, 99.0],
   "lambda": 1.0,
