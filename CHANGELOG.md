@@ -5,7 +5,29 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
-## [Unreleased] — 0.1.7 后 P0/P1 修复批次（插件分析报告 2026-09-24）
+## [0.2.1] - 2026-09-26 — 干净集重训（v2.1.0）
+
+### 数据清洗
+- **排除 fault=1 失败样本**：`l0_residuals` 中 992 条异步 + 30 条永磁标记为 RMxprt 求解失败（l1_eff=0），全部剔除。干净集 n=3835（异步）+1100（永磁）。
+- **根因分析**：fault=1 样本集中在大极数(6p)+大 OD 设计，推测 RMxprt 在该参数空间发散，应在 L0 阶段直接标记不可用而非进入代理模型。
+
+### 性能对比（v2.0.0 → v2.1.0）
+
+| 段 | n | CV R² | CV MAE | l0 基线 MAE | 相对改善 |
+|---|---|---|---|---|---|
+| 异步 small | 1279 | **+0.652** | 1.44pp | 3.68pp | **−61%** |
+| 异步 medium | 2558 | +0.438 | 3.29pp | 5.31pp | −38% |
+| 异步 large | 1276 | **+0.670** | 4.53pp | 8.69pp | **−48%** |
+| 永磁 small | 367 | +0.134 | 2.17pp | 2.09pp | — 公式降级 |
+| 永磁 medium | 745 | +0.099 | 1.88pp | 1.83pp | — 公式降级 |
+| 永磁 large | 355 | +0.311 | 1.29pp | 1.68pp | −23% |
+
+### 扩充决策（否决）
+- `case_motors` 表 `wire_dia` 字段 **100% NULL**，无法补算 l0_eff（公式通道需导线直径计算铜耗）。
+- 铭牌效率（平均 82.4%）与 RMxprt 效率（平均 89.5%）口径不一致，强行并入会注入错误残差关系。
+- **结论**：扩充暂缓，待 wire_dia 补全或铭牌→RMxprt 映射标定后再做。
+
+## [0.2.0] - 2026-09-26
 
 ### 修复
 - **`estimateTotalLoss()` 量纲修复**（`lib/surrogate-engine.mjs`）：`efficiency` 是百分数口径（91.34=91.34%），旧实现 `powerW*(1/efficiency-1)` 按小数口径计算，15kW/η91.34% 会得到 **−14835.78W**（负损耗）；现先归一到 [0,1] 再反推，同输入得 +1422.17W，并增加 η≤0 或 η≥100% 的防护（返回 0 交公式通道兜底）
@@ -15,7 +37,23 @@
 - **surrogate 通道标注实验特性**：`models/l0_surrogate_family.json` 增加 `experimental: true` 与 `experimental_note`（训练域 od_range≈612~2651mm 与真实中小机座 100~500mm 不匹配、PMSM 段 cv_r2≈0、特征含 l0_eff 泄漏）；`motor_l0_estimate` 工具输出新增 `surrogate_experimental` / `surrogate_warning` 字段；README 增加 ⚠️ 标注。排序决策请使用默认公式通道
 - **仓库卫生**：`git rm --cached` 移除历史误入库的 `dist/`（4 文件，含 _debug*.py 与 v0.1.0 tar.gz）与 `metadata/publish-log.json`（本地文件保留，`.gitignore` 规则自此生效）
 
+### 新增（代理模型 v2.0.0 重训 · 基于 6390 行真实 RMxprt 残差）
+
+- **数据源修正**：旧 v1.0.0 误用 242 行 `res_cc` 真解且为"去泄漏"删掉 `l0_eff` → 小/中机 cv_r2 为负。v2.0.0 改用 `designs.db.l0_residuals`（6390 行：5260 异步 + 1130 永磁，含 `l0_eff` 公式效率 + `l1_eff` RMxprt 效率）为主训练源（决策"先用现有数据训练，不调用 RMxprt"）。
+- **特征工程（决策"加入特征"）**：特征集 = `[stator_od, stator_id, core_length, poles, l0_eff]` → `l1_eff`。实证 `l0_eff` 是公式通道可算的物理基（推理端公式通道会算，不依赖 RMxprt），非部署泄漏；加入后异步 cv_r2 由 +0.21（纯几何）跃升至 +0.55。异步分族：small R²=0.636/MAE=1.45pp、medium 0.484/3.57pp、large 0.670/4.81pp。
+- **扩充消融**：`case_motors`（铭牌效率）按 0.5× 并入经消融验证会拉低异步 R²（0.547→0.537，标签口径铭牌 vs RMxprt 不一致），故 v2.0.0 暂未并入，待 nameplate→RMxprt 映射标定后再扩充（决策"扩充"暂缓）。
+- **PMSM 处理**：各段 cv_r2≤0.31（效率集中高位、方差小）→ 不建族，推理自动降级公式通道。
+
+### 修复（插件部署打通）
+
+- **版本校验**（`lib/surrogate-engine.mjs`）：`startsWith('1.')` 拒 v2.0.0 → 改为接受 `'1.' | '2.'`。
+- **detectMotorType**：`od<400→pmsm` 误判真实小异步（OD 275/337）→ 改为优先用 `params.motor_type`，回退 OD 启发式。
+- **置信阈值**：`DEFAULT_CONFIDENCE_THRESHOLD` 0.7 高于本模型最高 R²(0.67) 会导致代理永不启用 → 降到 0.4。
+- **l0_eff 注入**（`tools/l0/l0-estimate.mjs`）：`predictSurrogate` 读取 `params[l0_eff]` 但推理 `params` 无此字段 → 推理端用 `quickL0Estimate` 补算注入（实测 Python/Node 两套公式仅差 ~0.5pp，口径一致）；默认模型路径改为 `models/l0_surrogate_family.json`。
+
 ### 校验
+- 模型 JSON 结构与 `predictLinear`/`extractFeatures` 对齐（`coef`=[截距+5权重]，`feature_mean/std` 齐备）。
+- 推理端自校验（Task #39）：注入 l0_eff 后 `predictSurrogate` 不再抛"特征 l0_eff 缺失"，异步各段返回合理效率区间。
 - `scripts/verify.mjs`：**60/60 全绿**（新增 V06 `a≤q` 三态断言：a=4 拦截 / a=2 放行 / a=3 整除判据回归保护）
 
 ## [0.1.7] - 2026-09-23
