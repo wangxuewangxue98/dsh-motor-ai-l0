@@ -5,6 +5,22 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.2.2] - 2026-09-26 — 代理通道修复（模型 v2.2.0）
+
+### 🔴 P0 修复：代理模型 coef 空间错位（0.2.1 升级不可用根因）
+- **现象**：用户开启 `l0Mode='surrogate'` + 新模型 `l0_surrogate_family.json` 时，异步机预测效率**恒为 50.00%**（物理钳位下界），`prediction_source=surrogate` 且 `surrogate_fallbacks=0` 误报「无降级」。
+- **根因**：训练端 `fit_segment` 在**原始特征空间**解 Ridge（coef 截距≈19、权重极小），而推理端 `extractFeatures` 先把特征按 `feature_mean/std` 标准化再乘 coef → 空间错位，`rawEff≈19` 被钳到 50。CV 评估在标准化空间做的（R² 高），但导出 coef 来自原始空间训练，两端不一致。
+- **修复**：`fit_segment` 改为在「按全量原始均值/标准差标准化」的特征空间内训练（feature_mean/std 维持原始统计不动），训练/推理空间严格对齐。重训导出模型 **v2.2.0**。
+- **验证**（端到端）：异步 75kW/1480rpm → `eff≈89~91%` 且 `source=surrogate`；PMSM 200kW/22000rpm 因段 cv_r2≤0.31、conf<0.4 仍正确降级公式。
+
+### 默认配置同步（让代理通道真正可用）
+- `index.mjs` Config schema 默认值：`surrogatePath` `'models/l0_surrogate.json'`→`'models/l0_surrogate_family.json'`；`surrogateConfidenceThreshold` `0.7`→`0.4`。
+- `tools/l0/l0-estimate.mjs`：代理分支条件由 `l0Mode==='surrogate'` 扩展为 `'surrogate' || 'auto'`（插件默认 `l0Mode='auto'`，否则代理通道永不启用）。
+- `cordis.patch.yml`：同步 `surrogatePath` / `surrogateConfidenceThreshold`，`l0Mode` 保持 `auto`。
+
+### 测试
+- `scripts/verify.mjs` 新增「surrogate 通道端到端可用且不被钳底」用例（显式走代理 + 断言 `efficiency>50 && ≤99`）。全量 **61/61** 通过（原 60/60 + 1）。
+
 ## [0.2.1] - 2026-09-26 — 干净集重训（v2.1.0）
 
 ### 数据清洗

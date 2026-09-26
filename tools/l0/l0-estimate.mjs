@@ -68,7 +68,8 @@ export function runL0Estimate(rawArgs, config = {}) {
   let surrogateFallbacks = 0
 
   // ---- 代理模型通道（需显式启用 l0Mode='surrogate'）----
-  if (l0Mode === 'surrogate') {
+  // 'auto' 与 'surrogate' 都走代理通道；'auto' 下代理失败/降级会自动回退公式通道（函数尾部）
+  if (l0Mode === 'surrogate' || l0Mode === 'auto') {
     try {
       const modelPath = config.surrogatePath ?? 'models/l0_surrogate_family.json'
       const model = loadSurrogateModel(modelPath)
