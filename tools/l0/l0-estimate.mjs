@@ -23,6 +23,7 @@ import {
   normalizeSpec, assertMatrixShape, buildHandoff, L0_NATIVE_FIELDS, L1_MIRROR_FIELDS,
 } from '../../lib/param-schema.mjs'
 import { quickL0Estimate } from '../../lib/formula-engine.mjs'
+import { resolveMotorType } from '../../lib/motor-constants.mjs'
 import {
   loadSurrogateModel,
   predictBatch,
@@ -143,6 +144,12 @@ export function runL0Estimate(rawArgs, config = {}) {
       )
       surrogateFallbacks = fallbacks
 
+      // 0.2.6 P0：直传 params_list 的行可能仍无 motor_type（非 buildParamMatrix 产物）。
+      // 缺省行已被 detectMotorType 统一判 induction（与生成默认一致），但必须让调用方看见数量。
+      const assumedTypeRows = paramsList.filter(
+        (r) => resolveMotorType(r?.motor_type).assumed
+      ).length
+
       for (let i = 0; i < paramsList.length; i++) {
         const row = paramsList[i]
         const shape = assertMatrixShape(row ?? {})
@@ -193,6 +200,8 @@ export function runL0Estimate(rawArgs, config = {}) {
           failures: failures.length ? failures : undefined,
           returned: topRows.length,
           feasible_count: feasibleCount,
+          returned_feasible_count: topRows.filter((r) => r.feasible === true).length,
+          motor_type_assumed_rows: assumedTypeRows > 0 ? assumedTypeRows : undefined,
           recommended: recommended
             ? { stator_od: recommended.params?.stator_od, poles: recommended.params?.poles, efficiency: recommended.efficiency, verdict: recommended.verdict }
             : null,
@@ -283,6 +292,9 @@ export function runL0Estimate(rawArgs, config = {}) {
     failures: failures.length ? failures : undefined,
     returned: topRows.length,
     feasible_count: feasibleCount,
+    // 0.2.6 P1：返回集可能混入 infeasible_thermal 行（温升超限为合法三态），
+    // feasible_count 是全量口径，调用方需要「本次返回里真正可行」的数量来自检。
+    returned_feasible_count: topRows.filter((r) => r.feasible === true).length,
     recommended: recommended
       ? {
         stator_od: recommended.params?.stator_od,

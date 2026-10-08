@@ -5,6 +5,53 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.2.6] - 2026-10-08 — P0 motor_type 透传修复 + 经验回灌闭环 + --cmp 跨版本对比进 CI
+
+本批修复源于 v0.2.5 的 1000 案例 + 10 万案例两轮独立压测（外部测试者复核，
+含 4 次断言口径自我修正的完整留痕）。压测确认 0.2.5 的 7 项声明修复全部兑现、
+V16 断崖在 1rpm 精度下彻底消除，唯一未修的 P0 在本版闭环。
+
+### P0：`params.motor_type` 透传（唯一阻塞零摩擦集成的缺陷）
+- **现象**：79.5% 生成行 `motor_type` 缺失 → 代理通道 `detectMotorType()` 落入
+  OD 启发式（od<400→pmsm），与生成路径默认（induction）矛盾，
+  OD<612.4mm 中小型异步机被静默误判 pmsm → 分族选段失败 → skipped 19.8%
+- **修复**（三处）：
+  - `lib/motor-constants.mjs` 新增 `resolveMotorType()`：别名归一（补 'async'/'im' 等
+    异步别名——它们此前不在任何别名表，是压测之外的第二处静默误判源）+
+    缺省显式判 induction 并标 `assumed`
+  - `tools/l0/param-matrix.mjs`：行对象**无条件**携带规范化 `motor_type`（与 0.2.5
+    `line_freq_hz` 同模式）；`spec` 回吐 `motor_type_assumed`；缺省/无法识别时回吐
+    `MOTOR_TYPE_ASSUMED` 告警（info/warning 两级）
+  - `lib/surrogate-engine.mjs`：`detectMotorType()` **删除 OD 启发式**，
+    改走 `resolveMotorType` —— 几何按异步口径生成时，推理端猜 pmsm 是放大错误不是修正错误
+- P1 顺带：两个通道 summary 均补 `returned_feasible_count`（返回集可能混入
+  infeasible_thermal 三态行，调用方需要可自检的口径）
+- 门禁 94→**95/95**：新增「P0 motor_type 透传」4 类断言（行级透传/双层告警/别名归一/P1 计数）
+
+### 经验回灌闭环（tools/feedback/experience-hub.mjs，新增）
+- `capture`：规格采样 → 公式通道（v3.1 已标定损耗）→ 本地 JSONL 经验样本
+  （`models/experience/`，不出网不外发）
+- `pair`：现役代理模型 vs 公式通道逐例配对，输出 MAE/bias/跳过原因分布
+- `shadow`：确定性二分训练/评估集拟合影子分桶模型（不落盘覆盖现役模型），
+  MAE 显著更优才建议触发正式重训
+- **首轮实测（300 spec / 12000 样本）**：现役模型（旧损耗常数训练）MAE=7.9pt /
+  bias=+5.8pt，影子基线 0.886pt —— 结论：建议触发正式重训（导出样本给 Python 侧 M1/M2/M3 管线）
+
+### --cmp 跨版本对比（scripts/cmp.mjs，新增）
+- 按「新规则是否拦截了旧规则放行的输入」四组归类：
+  `both_ok / new_only（改进）/ old_only_blocked_by_rule（预期拦截）/ regression_suspect`
+- **只有 regression_suspect 才判回退** —— 直接固化压测复盘教训
+  （把 V18 拦截越界频率误读成「200rpm 回退 80pp」的事不再发生）
+- CI 固化见 `.github/workflows/ci.yml`
+
+### CI（.github/workflows/ci.yml，新增）
+- `gate`：push/PR 跑单测 + 95 项门禁
+- `cmp`：手动/每周定时，`scripts/cmp.mjs --against <npm latest>`，疑似回退退出非零
+
+### 门禁与回归
+- 门禁 95/95，单测 22/22
+- `scripts/cmp.mjs --against 0.2.5` 实测：24 用例 0 疑似回退（P0 修复不改变可行性口径）
+
 ## [0.2.5] - 2026-10-08 — 10 万案例压测复核修复：V16 频率可配置 + 绝缘等级透传 + 转矩口径契约 + 极数合法性
 
 本批修复源于 10 万案例规模压测的复核结论。

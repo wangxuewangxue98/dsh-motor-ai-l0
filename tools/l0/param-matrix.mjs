@@ -25,7 +25,7 @@
  */
 
 import {
-  idRatio, idRatioByPoles, isPmsmType, SLOT_MAP, PMSM_SLOT_MAP, baseTurns, empiricalBaseSize, rotorOd, toothWidth,
+  idRatio, idRatioByPoles, isPmsmType, resolveMotorType, SLOT_MAP, PMSM_SLOT_MAP, baseTurns, empiricalBaseSize, rotorOd, toothWidth,
   yokeThickness, solveYokeAndFrame, yokeThicknessForFlux, shaftDia, empiricalAirGap, fitLambdaWithinRange,
   PMSM_DEFAULT_POLE_ARC, PMSM_DEFAULT_PM_THICK_MM,
   DEFAULT_LINE_FREQ_HZ, DEFAULT_INSULATION_CLASS,
@@ -46,9 +46,10 @@ export const TOOL_PARAMS = {
   motor_type: {
     type: 'string',
     description:
-      '电机类型（opt-in）。传 PMSM/BLDC/IPM 或中文别名时，内径比按永磁生产口径 ' +
-      '0.72+0.010(p−2) 钳[0.70,0.80] 生成，更贴合 PMSM 真实几何；不传则维持 legacy 口径 ' +
-      '0.55+0.03(p−2)（与程序 focused_scan 一致，零回归）。',
+      '电机类型。传 PMSM/BLDC/IPM 或中文别名时，内径比按永磁生产口径 ' +
+      '0.72+0.010(p−2) 钳[0.70,0.80] 生成，更贴合 PMSM 真实几何；不传按 induction legacy 口径 ' +
+      '0.55+0.03(p−2)（与程序 focused_scan 一致，零回归）并回吐 MOTOR_TYPE_ASSUMED 提示；' +
+      'PMSM 工况必须显式传入，否则整批按异步几何计算。',
   },
   torque_nm: { type: 'number', description: '额定转矩 (Nm)，缺省由 9550·P/n 推算' },
   cooling: {
@@ -178,6 +179,9 @@ export function buildParamMatrix(rawSpec, config = {}) {
   // 显式传 PMSM/BLDC/IPM（含中文别名）→ is_pm 生产口径 0.72+0.010(p−2) 钳[0.70,0.80]，更贴合 PMSM 真实几何。
   const motorType = spec.motor_type ?? spec.motorType
   const usePm = isPmsmType(motorType)
+  // 0.2.6 P0：类型规范化（别名归一 + 缺省显式判 induction 并标记），
+  // 行对象无条件携带 motor_type，消除「生成按异步、推理按 OD 误判 pmsm」的口径分裂。
+  const motorResolved = resolveMotorType(motorType)
   const ratioOf = (pole) => (usePm ? idRatioByPoles(pole, { isPm: true }) : idRatio(pole))
 
   // ---- 基准尺寸中心（类比模式）----
@@ -319,9 +323,10 @@ export function buildParamMatrix(rawSpec, config = {}) {
           // 二者此前均未逐行携带，导致 V16 恒按 50Hz、B 级用户按 F 级考核。
           line_freq_hz: lineFreqHz,
           insulation_class: insulationClass,
-          // PMSM 场景显式传入时标记；缺省（motorType=undefined）不产生该键
-          // → 默认路径的行对象与 0.1.3 逐字节零回归（否则内存对象会多挂 undefined 键）
-          ...(motorType !== undefined ? { motor_type: motorType } : {}),
+          // 0.2.6 P0：motor_type 无条件随行下发（规范化后的 canonical 值）。
+          // 此前缺省不产生该键 → 代理通道 detectMotorType 落入 OD 启发式，
+          // od<400 静默误判 pmsm，中小型异步机 skipped 19.8%（10 万案例压测定位）。
+          motor_type: motorResolved.type,
           // ---- 物理核验 ----
           _physics: {
             d_squared_l: d2l,
@@ -425,6 +430,22 @@ export function buildParamMatrix(rawSpec, config = {}) {
     })
   }
 
+  // 0.2.6 P0：motor_type 缺省/无法识别必须显式告警 —— 静默按 induction 处理会
+  // 让 PMSM 用户拿到异步几何而无从察觉（10 万案例压测：79.5% 行 motor_type 缺失）。
+  if (motorResolved.assumed || motorResolved.unrecognized) {
+    warnings.push({
+      code: 'MOTOR_TYPE_ASSUMED',
+      level: motorResolved.unrecognized ? 'warning' : 'info',
+      input: motorType ?? null,
+      resolved_as: 'induction',
+      message: motorResolved.unrecognized
+        ? `motor_type='${motorType}' 无法识别（合法别名见 SKILL），已按 induction（异步）口径生成。` +
+          `若目标是永磁机（PMSM/BLDC/IPM），结果几何与磁路均为异步口径，请显式传 motor_type:'pmsm' 重算。`
+        : `未提供 motor_type，已按 induction（异步）legacy 口径生成 —— 这是该工具的默认口径，` +
+          `与代理/校验通道一致。PMSM 必须显式传 motor_type:'pmsm'，否则整批按异步几何计算。`,
+    })
+  }
+
   return {
     warnings,
     od_limit: odLimitMeta,
@@ -434,7 +455,9 @@ export function buildParamMatrix(rawSpec, config = {}) {
     truncated,
     spec: {
       power_kw: powerKw, speed_rpm: speedRpm, voltage_v: voltage, poles,
-      ...(motorType !== undefined ? { motor_type: motorType } : {}),
+      motor_type: motorResolved.type,
+      motor_type_assumed: motorResolved.assumed,
+      motor_type_input: motorType ?? undefined,
       torque_nm: torqueNm, cooling, count,
       line_freq_hz: lineFreqHz, insulation_class: insulationClass,
     },

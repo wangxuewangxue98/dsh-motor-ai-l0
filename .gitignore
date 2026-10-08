@@ -16,3 +16,6 @@ l0-handoff/
 scripts/loss_calib_v2_result.json
 scripts/loss_calib_v3_result.json
 scripts/loss_calib_result.json
+
+# 经验回灌本地样本（含几何明细，只留本机；capture 会重建）
+models/experience/

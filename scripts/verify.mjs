@@ -42,7 +42,8 @@ import {
 import {
   assessApplicability, scenarioFromMatrix, APPLICABILITY,
 } from '../lib/applicability-gate.mjs'
-import { solveYokeAndFrame, yokeThicknessForFlux } from '../lib/motor-constants.mjs'
+import { solveYokeAndFrame, yokeThicknessForFlux, resolveMotorType } from '../lib/motor-constants.mjs'
+import { selectFamilySegment } from '../lib/surrogate-engine.mjs'
 import { evaluateSuite, makeBaseline, compareBaseline } from '../lib/regression-gate.mjs'
 import {
   TELEM_FIELDS, sanitizeTelemetry, aggregateUsage,
@@ -448,6 +449,34 @@ check('matrix: v0.2.5 P0 零回归 —— 未触发轭厚放大的行与旧写�
     must(compared > 0, `${spec.power_kw}kW 未找到可比对的未放大行，零回归断言无效`)
   }
   return '未放大行逐字节一致 + 默认上限 P0 感知且被严格尊重 + 放大后几何链完整'
+})
+
+check('matrix: 0.2.6 P0 motor_type 透传 —— 缺省行携带 induction + MOTOR_TYPE_ASSUMED，代理不再 OD 误判', () => {
+  // 10 万案例压测（v0.2.5）定位的 P0：79.5% 行 motor_type 缺失，
+  // detectMotorType 的 OD 启发式（od<400→pmsm）与生成默认（induction）矛盾，
+  // OD<612.4mm 中小型异步机代理通道静默 skipped 19.8%。
+  const b = buildParamMatrix({ power_kw: 15, speed_rpm: 1460, voltage_v: 380, count: 30 }, { maxMatrixSize: 2000 })
+  must(b.matrix.every((r) => r.motor_type === 'induction'), '缺省 motor_type → 全行携带 induction（代理通道不再落启发式）')
+  const w = (b.warnings ?? []).find((x) => x.code === 'MOTOR_TYPE_ASSUMED')
+  must(!!w && w.level === 'info', '缺省时回吐 MOTOR_TYPE_ASSUMED（info 级）')
+  must(b.spec.motor_type_assumed === true, 'spec.motor_type_assumed=true 让缺省可见')
+  // 显式别名归一：'async' 此前不在别名表 → 落 OD 启发式，是压测报告之外的第二处静默误判源
+  must(resolveMotorType('async').type === 'induction' && !resolveMotorType('async').assumed, "别名 'async' 归一为 induction")
+  must(resolveMotorType('Y2').unrecognized === true, '无法识别的输入标 unrecognized（不静默）')
+  must(resolveMotorType(undefined).assumed === true, '缺省标 assumed')
+  // 旧启发式已删：od=300 按 induction 命中分族段（修复前误判 pmsm → 段缺失 → skipped）
+  const fakeModel = {
+    schema: 'l0_surrogate_family',
+    induction_segments: { small: { od_range: [0, 612.4] } },
+    pmsm_segments: {},
+  }
+  must(!!selectFamilySegment(300, 'induction', fakeModel), 'od=300 按 induction 命中分族段（P0 主场景）')
+  // P1 契约：returned_feasible_count（返回集可能混入 infeasible_thermal，需可自检）
+  const e = runL0Estimate({ params_list: b.matrix.slice(0, 20), top_n: 8, sort_by: 'efficiency' }, {})
+  must(typeof e.returned_feasible_count === 'number' && e.returned_feasible_count >= 0,
+    `returned_feasible_count 已入契约（=${e.returned_feasible_count}）`)
+  must(e.results.every((r) => r.params?.motor_type === 'induction'), '结果行 params.motor_type 已透出')
+  return '行级透传 + 双层告警（warning/info）+ 别名归一 + P1 计数，4 类断言全过'
 })
 
 check('matrix: v0.2.4 显式上限被夹紧时回吐 OD_LIMIT_CLAMPED 告警（且仍严格尊重上限）', () => {
