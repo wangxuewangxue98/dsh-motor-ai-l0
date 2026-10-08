@@ -506,10 +506,18 @@ check('estimate: v0.2.4 封顶值本身不变 —— efficiency 仍与 L1 同口
     poles: 4, voltage: 380, speed: 1460, slots_stator: 36, slots_rotor: 28,
     rotor_od: 106.8, tooth_width: 4.7, power_kw: 15, cooling: 'forced_air',
   }, { efficiencyCap: 96 })
-  must(small.efficiency_capped === false, `15kW 不应触顶，实际 raw=${small.efficiency_raw}`)
-  must(Math.abs(small.efficiency_raw - small.efficiency) < 1e-9,
-    `未触顶行真值应等于显示值：raw=${small.efficiency_raw} vs ${small.efficiency}`)
-  return `大样本 capped=${row.efficiency}%/raw=${row.efficiency_raw}%；15kW 未触顶 raw=${small.efficiency_raw}%`
+  // v3 损耗标定（2026-10-08）后 15kW raw 效率进入 96~98 域（铜损高估 +201%→−21%、
+  // 铁耗换真值 B 口径 —— 旧「15kW 必不触顶」断言固化了损耗失真下的效率假值，故撤除）。
+  // 改为断言 capped 标记与 raw 自洽 —— 这才是该样本的本意（不触顶行标记 false 且两值相等）。
+  must(small.efficiency_capped === (small.efficiency_raw > 96),
+    `capped 标记必须与 raw 自洽：raw=${small.efficiency_raw} capped=${small.efficiency_capped}`)
+  if (!small.efficiency_capped) {
+    must(Math.abs(small.efficiency_raw - small.efficiency) < 1e-9,
+      `未触顶行真值应等于显示值：raw=${small.efficiency_raw} vs ${small.efficiency}`)
+  }
+  must(small.efficiency_raw >= 88 && small.efficiency_raw <= 99,
+    `15kW raw 效率应落工程合理域 [88,99]（v3 标定后基线 ≈97），实际 ${small.efficiency_raw}`)
+  return `大样本 capped=${row.efficiency}%/raw=${row.efficiency_raw}%；15kW raw=${small.efficiency_raw}% capped=${small.efficiency_capped}`
 })
 
 check('matrix: P3 高速工况 —— 22000rpm 归入 2 极档（f≈367Hz）', () => {

@@ -14,4 +14,5 @@ l0-handoff/
 
 # 损耗标定运行产物（含本机数据集路径，不外发）
 scripts/loss_calib_v2_result.json
+scripts/loss_calib_v3_result.json
 scripts/loss_calib_result.json
