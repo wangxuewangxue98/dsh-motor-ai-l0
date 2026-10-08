@@ -474,10 +474,18 @@ check('estimate: v0.2.4 效率封顶不再压平排序 —— 450kW 大机座按
   const feasRows = feasIdx.map((i) => built.matrix[i])
   must(feasRows.length > 0, '前置条件：450kW 应有可行解')
 
-  const est = runL0Estimate({ params_list: feasRows, top_n: 10, sort_by: 'efficiency' }, { efficiencyCap: 96 })
+  // v3 机械耗标定（2026-10-08）后 450kW raw ≈94.4 不再自然触顶 96 —— 旧断言依赖
+  // 「损耗低估推高效率」的巧合，故改为动态取真值域中点为 cap，主动制造触顶场景，
+  // 验证封顶机制本身（触顶标记 + 排序仍按 raw 真值 + 区分度保留）。
+  const estRaw = runL0Estimate({ params_list: feasRows, top_n: 10, sort_by: 'efficiency' }, { efficiencyCap: 99 })
+  const rawAll = estRaw.results.map((r) => r.efficiency_raw)
+  must(rawAll.length > 0 && rawAll[0] > rawAll[rawAll.length - 1], '前置条件：raw 真值应有降序区分度')
+  const cap = Math.round(((rawAll[0] + rawAll[rawAll.length - 1]) / 2) * 10) / 10
+
+  const est = runL0Estimate({ params_list: feasRows, top_n: 10, sort_by: 'efficiency' }, { efficiencyCap: cap })
   const top = est.results
   const capped = top.filter((r) => r.efficiency_capped === true).length
-  must(capped > 0, `本批应存在触顶行（用于验证封顶仍生效），实际触顶 ${capped}/${top.length}`)
+  must(capped > 0, `本批应存在触顶行（cap=${cap} 低于 raw 上界 ${rawAll[0]}），实际触顶 ${capped}/${top.length}`)
 
   const raws = top.map((r) => r.efficiency_raw)
   for (let i = 1; i < raws.length; i++) {
@@ -487,16 +495,20 @@ check('estimate: v0.2.4 效率封顶不再压平排序 —— 450kW 大机座按
   const spread = Math.round((Math.max(...raws) - Math.min(...raws)) * 100) / 100
   must(distinct > 1, `真值应保留区分度，实际去重仅 ${distinct} 个值（排序被压平）`)
   must(est.efficiency_capped_count > 0 && est.efficiency_note, '应据实回吐触顶计数与说明')
-  return `Top${top.length} 真值 ${raws[0]}~${raws[raws.length - 1]}%（极差 ${spread}pt，${distinct} 个不同值），触顶 ${capped} 行，显示值仍为 ${top[0].efficiency}%`
+  return `Top${top.length} 真值 ${raws[0]}~${raws[raws.length - 1]}%（极差 ${spread}pt，${distinct} 个不同值），cap=${cap} 触顶 ${capped} 行，显示值仍为 ${top[0].efficiency}%`
 })
 
 check('estimate: v0.2.4 封顶值本身不变 —— efficiency 仍与 L1 同口径（零回归）', () => {
-  const row = quickL0Estimate({
+  const p200 = {
     stator_od: 400, stator_id: 240, core_length: 300, air_gap: 1.0,
     poles: 2, voltage: 380, speed: 3000, slots_stator: 24, slots_rotor: 20,
     rotor_od: 238, tooth_width: 15.7, power_kw: 200, cooling: 'oil_immersed',
-  }, { efficiencyCap: 96 })
-  must(row.efficiency <= 96, `efficiency 必须仍被封顶到 96（与 L1 同口径），实际 ${row.efficiency}`)
+  }
+  // v3 机械耗标定后该样本 raw 不再自然越 96，同上改为动态 cap（raw−1pt）制造触顶
+  const raw200 = quickL0Estimate(p200, { efficiencyCap: 99 }).efficiency_raw
+  const cap200 = Math.floor(raw200 * 10) / 10 - 1
+  const row = quickL0Estimate(p200, { efficiencyCap: cap200 })
+  must(row.efficiency <= cap200, `efficiency 必须仍被封顶（与 L1 同口径），实际 ${row.efficiency} > cap ${cap200}`)
   must(row.efficiency_raw >= row.efficiency,
     `真值不得小于钳位值：raw=${row.efficiency_raw} < capped=${row.efficiency}`)
   must(row.efficiency_capped === true, '该样本应被标记触顶')
@@ -516,7 +528,7 @@ check('estimate: v0.2.4 封顶值本身不变 —— efficiency 仍与 L1 同口
       `未触顶行真值应等于显示值：raw=${small.efficiency_raw} vs ${small.efficiency}`)
   }
   must(small.efficiency_raw >= 88 && small.efficiency_raw <= 99,
-    `15kW raw 效率应落工程合理域 [88,99]（v3 标定后基线 ≈97），实际 ${small.efficiency_raw}`)
+    `15kW raw 效率应落工程合理域 [88,99]（v3 机械耗标定后基线 ≈93.4），实际 ${small.efficiency_raw}`)
   return `大样本 capped=${row.efficiency}%/raw=${row.efficiency_raw}%；15kW raw=${small.efficiency_raw}% capped=${small.efficiency_capped}`
 })
 
