@@ -14,7 +14,7 @@
  * 用法：
  *   node scripts/verify.mjs
  */
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { readdir, access } from 'node:fs/promises'
 import { join, dirname, resolve, relative } from 'node:path'
 import { execFileSync } from 'node:child_process'
@@ -49,6 +49,20 @@ import {
 } from '../lib/telemetry.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
+/** 递归列出目录下所有文件（发布物泄漏扫描用，跳过 node_modules 与隐藏目录） */
+function walk(dir) {
+  const out = []
+  let ents
+  try { ents = readdirSync(dir, { withFileTypes: true }) } catch { return out }
+  for (const e of ents) {
+    if (e.name === 'node_modules' || e.name.startsWith('.')) continue
+    const p = join(dir, e.name)
+    if (e.isDirectory()) out.push(...walk(p))
+    else out.push(p)
+  }
+  return out
+}
 
 // 社区反馈工具（静态导入：check() 是同步的，不能在断言里 await import）
 import {
@@ -1416,6 +1430,28 @@ check('社区资产：ISSUE 模板与 package.json author 齐备', () => {
   must(pkg.bugs && pkg.bugs.url, 'package.json 缺 bugs.url')
   must(pkg.repository && pkg.repository.url, 'package.json 缺 repository.url')
   return `3 套模板 + config 齐备；author=${pkg.author.name}`
+})
+
+//P0防泄漏：0.2.4/0.2.5 两次发版都把本机绝对路径打进了 npm 包。
+// .gitignore 管不住 npm 打包（files 是白名单，优先级更高），因此改为断言「发布内容里没有硬编码本机路径」。
+check('P0 发布物无本机绝对路径泄漏（0.2.4/0.2.5 教训固化）', () => {
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
+  const dirs = (pkg.files || []).filter(f => !f.endsWith('.md') && !f.endsWith('.json'))
+  const bad = []
+  // 只扫会进包的运行时目录（lib/tools/scripts），docs/examples 已在人工审阅范围
+  for (const d of dirs) {
+    const abs = join(ROOT, d)
+    if (!existsSync(abs) || !statSync(abs).isDirectory()) continue
+    for (const f of walk(abs)) {
+      if (!/\.(mjs|js|json|py|md)$/.test(f)) continue
+      const txt = readFileSync(f, 'utf8')
+      // 匹配 "C:" +斜杠+ "Users" 这类盘符绝对路径（本注释刻意断开，避免断言匹配到自己）
+      const m = txt.match(/[A-Za-z]:[\\/]Users[\\/][^"'`\s]+/g)
+      if (m) bad.push(`${relative(ROOT, f)}: ${[...new Set(m)].join(',')}`)
+    }
+  }
+  must(bad.length === 0, `发布目录含本机绝对路径：\n     ${bad.join('\n     ')}\n     修法：改用环境变量/占位符，或把该文件移出 package.json files`)
+  return `扫描 ${dirs.length} 个发布目录，0 处盘符绝对路径`
 })
 
 // ---------- 输出 ----------
