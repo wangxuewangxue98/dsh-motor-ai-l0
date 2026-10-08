@@ -22,7 +22,7 @@ whenToUse: >
 user-invocable: true
 metadata:
   author: Motor-AI
-  version: 0.2.4
+  version: 0.2.5
   level: l0
   tier: free
 ---
@@ -40,6 +40,30 @@ L0 是**广筛层**：用纯 JS 经验公式在毫秒级把成百上千个参数
 
 > 硬规则：**不得**把 L0 输出直接当成设计结论报给用户。
 > 每次汇报必须带上 `solve_mode='l0'` 标记，并说明这是预筛结果。
+
+## 能力门（v0.2.5）：调用前必须先判适用域
+
+L0 的几何/磁密/反电势模型按**工频中压异步电机**标定。超出标定域时它不会给出错误数字，
+而是把整批判死、`recommended = null` —— 调用方只看到「无解」，无法区分
+「设计真的不可行」与「这工具根本不适用」。
+
+因此 `motor_l0_estimate` 返回体带 `applicability` 字段（三档）：
+
+| 档 | 含义 | 该怎么用 |
+|---|---|---|
+| `ok` | 在标定域内 | 正常用 L0 排序 |
+| `caution` | 边界附近 / PMSM | 结果**仅供横向比较**，不可作定量结论 |
+| `reject` | 超出标定域 | **停止调 L0**，按 `applicability_advice` 改工况或直接进 L1/L2 |
+
+标定域（实测划定，可调 `lib/applicability-gate.mjs` 的 `APPLICABILITY`）：
+- 电频率 `f = n·p/120 ≤ 400Hz`
+- 转速 `n ≤ 3000rpm`（无转子强度/挠度/轴承寿命校核）
+- 电压 `U ≤ 690V`
+- PMSM 无 dq/弱磁/退磁/转矩脉动模型 ⇒ **恒为 caution**
+
+> **处理 `reject` 的硬规则**：`applicability_note` 会把 `feasible_count=0` 明确归因为
+> 「超出 L0 标定域」而非「设计上无解」。此时**不得**把它报告成「该工况做不出来」，
+> 也**不得**反复调参试图让 L0 出方案 —— 正确动作是按 `applicability_advice` 路由到 L1/L2。
 
 ## 字段契约（不可违反）
 

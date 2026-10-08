@@ -26,8 +26,9 @@
 
 import {
   idRatio, idRatioByPoles, isPmsmType, SLOT_MAP, PMSM_SLOT_MAP, baseTurns, empiricalBaseSize, rotorOd, toothWidth,
-  yokeThickness, shaftDia, empiricalAirGap, fitLambdaWithinRange,
+  yokeThickness, solveYokeAndFrame, yokeThicknessForFlux, shaftDia, empiricalAirGap, fitLambdaWithinRange,
   PMSM_DEFAULT_POLE_ARC, PMSM_DEFAULT_PM_THICK_MM,
+  DEFAULT_LINE_FREQ_HZ, DEFAULT_INSULATION_CLASS,
   round1, round2, clamp,
 } from '../../lib/motor-constants.mjs'
 import {
@@ -58,16 +59,33 @@ export const TOOL_PARAMS = {
   base_diameter: { type: 'number', description: '基准内径中心 (mm)，覆盖经验估算' },
   base_length: { type: 'number', description: '基准铁心长度中心 (mm)' },
   count: { type: 'number', description: '目标方案数，默认 20' },
+  line_freq_hz: { type: 'number', description: `电源频率 (Hz)，默认 ${DEFAULT_LINE_FREQ_HZ}。同步转速 n_sync=120·f/p，60Hz 电网与 VFD 变频工况必须显式传入，否则 V16 会误判超同步` },
+  insulation_class: { type: 'string', description: `绝缘等级 B/F/H，默认 ${DEFAULT_INSULATION_CLASS}。B=80K / F=105K / H=125K 温升限值` },
 }
 
-/** 转速 → 推荐极数（ determinate 场景识别的简化版，对齐 determine_scenario 的选型直觉） */
-export function recommendPoles(speedRpm) {
-  // ⚠ 取证纠正：初版把 >12000rpm 归入「1 极档」是物理错误 —— 永磁同步机不存在 1 极。
+/**
+ * 转速 → 推荐极数（ determinate 场景识别的简化版，对齐 determine_scenario 的选型直觉）
+ * @param {number} speedRpm 额定转速
+ * @param {number} [lineFreqHz=50] 电源频率 Hz。v0.2.5 新增频率感知：
+ *   10 万案例压测发现 1500rpm 存在可用率断崖（0.15% 可行），根因是本函数在
+ *   `>=1400 → 4 极` 档位把 1460~1500rpm 全给了 4 极，而 50Hz 下 4 极同步转速恰为
+ *   1500rpm ⇒ n_sync ≤ speed 被 V16 判死。改用同步转速反推档位边界。
+ *   实测：1460rpm→4极（n_sync=1500>1460 合法）；1500rpm→2极（4/6/8 极的 n_sync
+ *   分别为 1500/1000/750，均 ≤1500 即超同步，唯一合法偶极是 2 极 n_sync=3000）。
+ */
+export function recommendPoles(speedRpm, lineFreqHz = DEFAULT_LINE_FREQ_HZ) {
+  const f = Number.isFinite(lineFreqHz) && lineFreqHz > 0 ? lineFreqHz : DEFAULT_LINE_FREQ_HZ
+  // 依据 n_sync = 120·f/p > n 取档：选满足「同步转速仍高于转速」的最大偶极数
+  // ⚠ 取证纠正（v0.1.7）：>12000rpm 归入「1 极档」是物理错误 —— 永磁同步机不存在 1 极。
   //   反推校验（现场工况）：200kW/22000rpm，取 2 极时 f = 22000×2/120 = 366.7Hz，
   //   与记录的「f≈367Hz」完全吻合 ⇒ 高速工况应归入 2 极，真正的约束是频率而非极数下限。
   if (speedRpm >= 2500) return 2
-  if (speedRpm >= 1400) return 4
-  if (speedRpm >= 900) return 6
+  // 中低速段：按各极数档的同步转速上界划分。
+  // 容差取 -1e-6：V16 在 n_sync ≤ speed 时判 failed（含恰好相等的同步点），
+  // 故当 speed 触及 n_sync(p) 时必须穿透到更小极数档，绝不能把「n_sync == speed」当合法。
+  if (speedRpm >= (120 * f) / 4 - 1e-6) return 2          // 触及 4 极 n_sync ⇒ 退到 2 极
+  if (speedRpm >= (120 * f) / 6 - 1e-6) return 4          // 触及 6 极 n_sync ⇒ 退到 4 极
+  if (speedRpm >= (120 * f) / 8 - 1e-6) return 6          // 触及 8 极 n_sync ⇒ 退到 6 极
   return 8
 }
 
@@ -113,7 +131,18 @@ export function defaultOdLimit(baseD, scanRange, poleList, ratioOf) {
   let need = 0
   for (const pole of poleList) {
     const od = (baseD * (1 + scanRange)) / ratioOf(pole)
-    if (Number.isFinite(od) && od > need) need = od
+    if (!Number.isFinite(od) || od <= 0) continue
+    // v0.2.5 P0：扫描空间之外还需为「按磁密反解的轭厚」留出机座增量。
+    //   旧口径只按扫描空间×1.05 取限，于是 P0 放大出的轭厚必然撞上默认上限，
+    //   被夹回小轭 ⇒ 默认配置下 P0 等于没生效（显式给大上限才看得到修复）。
+    //   故上限必须把 yokeGrowth 计入，否则「默认」与「显式」会给出不同的几何。
+    const dEff = od * ratioOf(pole)
+    const yokeReq = yokeThicknessForFlux({ statorId: dEff, poles: pole })
+    const slotDepth = (od - dEff) / 2 * 0.60
+    const yokeRatio = (od - dEff) / 2 * 0.40
+    const yoke = Math.max(yokeRatio, Number.isFinite(yokeReq) ? yokeReq : 0)
+    const odWithYoke = dEff + 2 * (slotDepth + yoke)
+    if (odWithYoke > need) need = odWithYoke
   }
   if (!Number.isFinite(need) || need <= 0) return 450 // 兜底：退化输入沿用旧值
   return Math.ceil((need * 1.05) / 50) * 50
@@ -133,7 +162,12 @@ export function buildParamMatrix(rawSpec, config = {}) {
   }
 
   const voltage = spec.voltage_v ?? 380
-  const poles = spec.poles ?? recommendPoles(speedRpm)
+  // v0.2.5：电源频率参与极数推荐（recommendPoles 频率感知）与 V16 判据
+  const lineFreqHz = Number.isFinite(Number(spec.line_freq_hz))
+    ? Number(spec.line_freq_hz) : (config.line_freq_hz ?? DEFAULT_LINE_FREQ_HZ)
+  // v0.2.5：绝缘等级必须逐行透传，否则下游按 F 级 105K 判，B 级(80K)用户拿到不合规方案
+  const insulationClass = String(spec.insulation_class ?? config.insulationClass ?? DEFAULT_INSULATION_CLASS).toUpperCase()
+  const poles = spec.poles ?? recommendPoles(speedRpm, lineFreqHz)
   const torqueNm = spec.torque_nm ?? computeTorque(powerKw, speedRpm)
   const cooling = COOLING_ALLOWED.includes(spec.cooling) ? spec.cooling : 'forced_air'
   // 外径上限见下方 dSteps/lSteps 之后 —— 默认值需依赖基准尺寸与极数表，无法在此定出
@@ -197,7 +231,35 @@ export function buildParamMatrix(rawSpec, config = {}) {
           odClamped = true
         }
 
-        const airGap = empiricalAirGap(od)
+// ---- 轭厚/机座求解（v0.2.5 改进 P0）----
+      // 原比例式 yoke = half×0.40 无磁密约束，高速大 Dsi 下必然 V08 判饱和。
+      // 此处按 By≤B_YOKE_WARN_T 反解所需轭厚，取较大者；轭厚被放大时同步外扩 OD，
+      // 并保留 grown 标记写入 _physics 以便追溯（OD 不再等于用户请求值时必须可查）。
+      const frame = solveYokeAndFrame({ statorOd: od, statorId: dEff, poles: pole })
+      // ⚠ stator_od 在 param-schema 中声明为 integer（assertMatrixShape 强校验），
+      //   故外扩结果必须取整，否则整批矩阵因形状异常被拒。
+      let odFinal = frame.grown ? Math.round(frame.stator_od) : od
+      let yokeThk = frame.yoke_thickness
+      let yokeLimitedByOdCap = false
+
+      // ⚠ 硬上限优先于磁密需求：用户显式/自动给的 stator_od_limit 是**约束**，
+      //   磁密需求只是**目标**。若为满足 By 而突破上限，等于用「目标」覆盖「约束」，
+      //   会让所有超限行静默变成 OD>limit 的非法行（实测打破 verify 的两条上限门禁）。
+      //   正确做法：夹回上限内，并按上限内可用的最大轭厚分配，
+      //   若仍不满足磁密需求，则**保留该行的不足**，交由 V08 如实判失败 ——
+      //   「上限内放不下足够的轭」是有价值的工程结论，不能靠偷扩上限掩盖。
+      if (odFinal > odLimit) {
+        yokeLimitedByOdCap = true
+        odFinal = Math.round(odLimit)
+        const halfCap = Math.max(1, (odFinal - dEff) / 2)
+        // 上限内的可用轭厚：按原比例 0.40/0.60 拆分环带，保持槽深/轭厚比例不变
+        yokeThk = round1(halfCap * 0.40)
+        const slotDepthCap = round1(halfCap * 0.60)
+        // 槽深并入槽形（row 里 air_gap/slot 由下游按 OD−Dsi 推，无需单独登记）
+        void slotDepthCap
+      }
+
+        const airGap = empiricalAirGap(odFinal)
         const rOd = rotorOd(dEff, airGap)
 
         // 确定性槽配合轮询：不再 random.choice
@@ -232,13 +294,13 @@ export function buildParamMatrix(rawSpec, config = {}) {
         const peakCurrent = closure?.peak_current ?? 80
 
         matrix.push({
-          stator_od: od,
+          stator_od: odFinal,
           stator_id: round1(dEff),
           rotor_od: rOd,
           core_length: coreLength,
           air_gap: airGap,
           tooth_width: toothWidth(dEff, slotsStator),
-          yoke_thickness: yokeThickness(od, dEff),
+          yoke_thickness: yokeThk,
           shaft_dia: shaftDia(rOd),
           poles: pole,
           voltage,
@@ -252,6 +314,11 @@ export function buildParamMatrix(rawSpec, config = {}) {
           power_kw: powerKw,
           torque_nm: torqueNm,
           cooling,
+          // v0.2.5：频率与绝缘等级必须随行下发。
+          // line_freq_hz → V16/V18 判据；insulation_class → 温升限值（B=80K/F=105K/H=125K）。
+          // 二者此前均未逐行携带，导致 V16 恒按 50Hz、B 级用户按 F 级考核。
+          line_freq_hz: lineFreqHz,
+          insulation_class: insulationClass,
           // PMSM 场景显式传入时标记；缺省（motorType=undefined）不产生该键
           // → 默认路径的行对象与 0.1.3 逐字节零回归（否则内存对象会多挂 undefined 键）
           ...(motorType !== undefined ? { motor_type: motorType } : {}),
@@ -262,10 +329,31 @@ export function buildParamMatrix(rawSpec, config = {}) {
             lambda_valid: lamCheck.valid,
             lambda_advice: lamCheck.advice,
             od_clamped: odClamped,
+            // v0.2.5 P0：轭厚按磁密反解后放大机座的追溯信息
+            yoke_thickness: yokeThk,
+            yoke_by_ratio: frame.yoke_by_ratio,
+            yoke_by_flux: frame.yoke_by_flux,
+            od_grown_for_yoke: frame.grown && !yokeLimitedByOdCap,
+            yoke_limited_by_od_cap: yokeLimitedByOdCap,
+            yoke_required_for_flux: frame.yoke_by_flux,
+            ...(frame.grown || yokeLimitedByOdCap
+              ? { stator_od_requested: od, stator_od_after_growth: odFinal }
+              : {}),
             estimated_torque: estTorque,
             ref_model: 'L0-类比估算',
             scenario: 'analogy',
             target_torque: torqueNm,
+            // ---- v0.2.5 转矩口径契约（P0）----
+            // 10 万案例压测把 estimated_torque 当"承诺满足用户转矩的输出"断言，
+            // 报出 91.4% 守恒失效。复核结论：两者本就是不同物理量——
+            //   target_torque  = 9550·P/n  = 用户规格（硬约束）
+            //   estimated_torque = target·(D²L/D²L_base) = 按几何类比外推的可达转矩
+            // 同一几何下二者必然不同（差 D²L 比例），不是计算错误，而是口径未标注。
+            // 但该字段进了交接白名单（param-schema L1_DIAG_FIELDS），下游若当规格用即静默违约，
+            // 故显式给出 basis 标记与偏差，让消费方无法误用。
+            torque_basis: 'analogy_d2l',
+            torque_is_spec: false,
+            torque_ratio_estimated_over_target: baseD2l > 0 ? round2(d2l / baseD2l) : 1,
             // v0.1.6：电气闭环派生量 + PMSM 几何种子（项目基准 极弧0.688 / PM厚12mm）
             electrical_frequency_hz: closure?.freq_hz ?? round1((speedRpm * pole) / 120),
             back_emf_v: closure?.back_emf_v ?? null,
@@ -348,6 +436,7 @@ export function buildParamMatrix(rawSpec, config = {}) {
       power_kw: powerKw, speed_rpm: speedRpm, voltage_v: voltage, poles,
       ...(motorType !== undefined ? { motor_type: motorType } : {}),
       torque_nm: torqueNm, cooling, count,
+      line_freq_hz: lineFreqHz, insulation_class: insulationClass,
     },
     applied,
   }
