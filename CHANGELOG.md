@@ -11,6 +11,18 @@
 含 4 次断言口径自我修正的完整留痕）。压测确认 0.2.5 的 7 项声明修复全部兑现、
 V16 断崖在 1rpm 精度下彻底消除，唯一未修的 P0 在本版闭环。
 
+### 发版卫生：泄漏门禁自身失效（0.2.5 tarball 遗留问题的收口）
+- **门禁漏洞**：`P0 发布物无本机绝对路径泄漏` 的正则只匹配 `C:/Users/...`，
+  对 `D:/MotorDesign/...` 这类工作区盘符**完全失明** —— 0.2.5 泄漏就是因此漏网，
+  而门禁当时仍报 95/95 全绿。已扩展为匹配任意盘符 + 真实目录名
+  （`C:/Users`、`D:/MotorDesign`、`D:/dsh-motor-ai-l0`），并用注入样本双向验证
+  （注入 → ❌ 失败，移除 → ✅ 通过），非"永远绿"断言。
+- **本次拦下的真实泄漏**：`scripts/loss_calib_v{2,3}_result.json` 为标定运行产物，
+  v2 内含 `D:/MotorDesign/output/...` 数据集绝对路径。已删除，
+  并在 `package.json.files` 加反选 `!scripts/loss_calib*_result.json`。
+  **再次印证根因**：`files` 是白名单且优先级高于 `.gitignore`/`.npmignore`，
+  「已 gitignore」≠「不进包」——本版起所有本地运行产物一律用 `!` 反选排除。
+
 ### P0：`params.motor_type` 透传（唯一阻塞零摩擦集成的缺陷）
 - **现象**：79.5% 生成行 `motor_type` 缺失 → 代理通道 `detectMotorType()` 落入
   OD 启发式（od<400→pmsm），与生成路径默认（induction）矛盾，

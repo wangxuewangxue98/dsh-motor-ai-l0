@@ -1494,8 +1494,10 @@ check('P0 发布物无本机绝对路径泄漏（0.2.4/0.2.5 教训固化）', (
     for (const f of walk(abs)) {
       if (!/\.(mjs|js|json|py|md)$/.test(f)) continue
       const txt = readFileSync(f, 'utf8')
-      // 匹配 "C:" +斜杠+ "Users" 这类盘符绝对路径（本注释刻意断开，避免断言匹配到自己）
-      const m = txt.match(/[A-Za-z]:[\\/]Users[\\/][^"'`\s]+/g)
+      // 匹配任意盘符 + 真实目录名的绝对路径
+      //（0.2.6 教训：原正则只覆盖 C:/Users，漏掉 D:/MotorDesign 这类工作区盘符）
+      // 反选锚点：包内合法出现的 <MotorDesign> / <user> 等占位符形态不带盘符与真实目录名
+      const m = txt.match(/[A-Za-z]:[\\/](Users|dsh-motor-ai-l0|MotorDesign)[\\/][^"'`\s]+/g)
       if (m) bad.push(`${relative(ROOT, f)}: ${[...new Set(m)].join(',')}`)
     }
   }

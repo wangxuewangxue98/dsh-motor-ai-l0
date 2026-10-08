@@ -18,7 +18,8 @@
     "CHANGELOG.md",
     "README.md",
     "LICENSE",
-    "!models/experience"
+    "!models/experience",
+    "!scripts/loss_calib*_result.json"
   ],
   "exports": {
     ".": "./index.mjs",
