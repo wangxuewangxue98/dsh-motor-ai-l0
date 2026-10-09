@@ -14,7 +14,8 @@
  * 用法：
  *   node scripts/verify.mjs
  */
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync, statSync, writeFileSync, unlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { readdir, access } from 'node:fs/promises'
 import { join, dirname, resolve, relative } from 'node:path'
 import { execFileSync } from 'node:child_process'
@@ -43,7 +44,7 @@ import {
   assessApplicability, scenarioFromMatrix, APPLICABILITY,
 } from '../lib/applicability-gate.mjs'
 import { solveYokeAndFrame, yokeThicknessForFlux, resolveMotorType } from '../lib/motor-constants.mjs'
-import { selectFamilySegment } from '../lib/surrogate-engine.mjs'
+import { selectFamilySegment, loadSurrogateModel, SUPPORTED_VERSION_PREFIXES } from '../lib/surrogate-engine.mjs'
 import { evaluateSuite, makeBaseline, compareBaseline } from '../lib/regression-gate.mjs'
 import {
   TELEM_FIELDS, sanitizeTelemetry, aggregateUsage,
@@ -1620,6 +1621,32 @@ check('design_exp：单条体量护栏（~400B 上限成立）', () => {
   const bytes = Buffer.byteLength(JSON.stringify(clean), 'utf8')
   must(bytes <= 600, `design_exp 单条字节 ${bytes} 超护栏 600B（设计 ~400B）`)
   return `单条 ${bytes}B（护栏 600B，设计 ~400B）`
+})
+
+// N3 (P3 前置)：经验回流触发重训的产物 version=3.1.0-fixseg 必须能被加载，
+// 否则回流闭环断在最后一环。用临时模型文件走完整 loadSurrogateModel 路径实测，
+// 并反向验证未知版本仍被拒（白名单不得退化成全放行）。
+check('N3 (P3): 模型版本白名单放行 3.x（重训产物可加载），仍拒未知版本', () => {
+  must(SUPPORTED_VERSION_PREFIXES.includes('3.'),
+    '3.x 未放行 — 重训产物 3.1.0-fixseg 会加载失败，回流闭环断在最后一环')
+  must(SUPPORTED_VERSION_PREFIXES.includes('2.') && SUPPORTED_VERSION_PREFIXES.includes('1.'),
+    '放行 3.x 不得丢掉 1./2. 兼容（零回归）')
+
+  const p3 = join(tmpdir(), 'n3_probe_310.json')
+  const p9 = join(tmpdir(), 'n3_probe_999.json')
+  writeFileSync(p3, JSON.stringify({ schema: 'l0_surrogate_family', version: '3.1.0-fixseg' }), 'utf8')
+  writeFileSync(p9, JSON.stringify({ schema: 'l0_surrogate_family', version: '9.9.9-bogus' }), 'utf8')
+
+  let ok3 = false
+  let rejected9 = false
+  try { loadSurrogateModel(p3); ok3 = true } catch { /* 应当成功 */ }
+  try { loadSurrogateModel(p9) } catch (e) { rejected9 = /版本不支持/.test(String(e?.message ?? '')) }
+  try { unlinkSync(p3) } catch { /* 清理失败不影响门禁结论 */ }
+  try { unlinkSync(p9) } catch { /* 同上 */ }
+
+  must(ok3, '3.1.0-fixseg 仍无法加载 —— N3 未真正生效')
+  must(rejected9, '未知版本 9.9.9 应被拒绝（白名单不得退化成全放行）')
+  return `放行 ${SUPPORTED_VERSION_PREFIXES.join('/')}；3.1.0 可加载、9.9.9 仍拒`
 })
 
 // ---------- 输出 ----------
