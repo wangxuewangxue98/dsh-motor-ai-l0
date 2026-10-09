@@ -5,6 +5,52 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.2.8] - 2026-10-09 — 设计经验脱敏回传通道（design_exp）+ N1 采集修复
+
+本批推进「设计样本脱敏回流方案 v1.0」的 **P1 插件侧**（设计定稿见
+`MotorDesign/output/l0-plugin-audit/设计样本脱敏回流方案_v1.0.md`）。
+外部 55 类真实调用只回传「使用统计」、不回传「实际设计了哪些电机」，
+本批补上第二条并行通道，且**默认全关、显式 opt-in、零身份信息**。
+
+### 新增：design_exp 设计经验脱敏回传通道（P1，默认关闭）
+- **动机**：使用遥测健全（55 调用/0 失败），但外部设计分布不回流；本机只有
+  1 份手动 capture 样本（12000 行，10 天未更新）。design_exp 把外部真实设计
+  的「规格+几何+结论+误差带」脱敏回流，喂 L0 代理重训 / 真值库 / 可行性画像。
+- **落地**：
+  - `lib/experience-upload.mjs`（新）：`buildDesignExp` 从 L0 结果行裁剪
+    `design_exp` record（spec/geo/out 三段 + rec_id 幂等键 + spec_complete N1 自检）；
+    独立脱敏白名单 `DESIGN_EXP_*_FIELDS` + 红线黑名单 `DESIGN_EXP_FORBIDDEN`
+    （账号/client_id/路径/提示词/密钥，与「本机绝对路径泄漏」门禁同形态反向验证）；
+    本地 `experience.jsonl` + 字节 offset 增量（复用 telemetry `readPendingRecords`）
+    + 48h 滚动 GC + 单批上限 `experienceBatchSize`(默认 200)；`reportExperience`
+    fire-and-forget，失败不推进 offset、下批重报，**绝不影响工具主流程**。
+  - `index.mjs`：Config 新增三开关 `designExperienceUpload`(默认 false) /
+    `experienceEndpoint`(空则回退 telemetryEndpoint) / `experienceBatchSize`；
+    新增 `setupExperienceUpload` 生命周期（周期 flush + 退出 flush，与 setupTelemetry
+    同节奏、独立开关），启动日志加「设计经验回传 on/off」可见性。
+  - `tools/l0/l0-estimate.mjs`：`execute` 成功分支对返回 TopN 裁 design_exp 落本地
+    （开关关 → `getExperienceSink` 返回 null → 静默，零副作用）。
+- **合规底线**：与 `telemetryEnabled`/`TELEM_FIELDS` 语义完全隔离（使用统计保持
+  「无设计内容」不变）；默认全关（`designExperienceUpload=false` 且端点空 = 不启用）；
+  规格与几何属可公开设计空间，可回流；身份信息经白名单硬编码排除 + 门禁断言双保险。
+
+### N1 修复：experience-hub capture 字段错位（样本 0% 带工况的根因）
+- **现象**：`designs.db.l0_residuals` spec 覆盖率仅 ~2%（真阻塞 v3.1 对齐重训）。
+- **根因**：`cmdCapture` 从矩阵行读 `p.speed_rpm`/`p.voltage_v`（spec 口径），
+  但矩阵行是 L1 口径命名 `speed`/`voltage`（param-matrix.mjs:310-312），
+  两键恒 undefined，`JSON.stringify` 静默丢弃 ⇒ 样本 0% 带工况、无法复现。
+- **修复**：`experience-hub.mjs` 的 `cmdCapture` 改从 `p.speed`/`p.voltage` 取值
+  （键名保持 spec 口径 `speed_rpm`/`voltage_v`，与 design_exp 契约一致），
+  连带修复 `cmdPair`/`cmdShadow` 对 `speed_rpm` 的消费。
+
+### 验证
+- `scripts/verify.mjs` 新增 4 条 design_exp 门禁（N1 完整率+降级 / 红线键注入拦截 /
+  rec_id 幂等 / 单条体量护栏）：门禁 **96 → 100/100**；`node --test` 单测 22/22 无回归。
+- **N3（放行 3.x 版本前缀）未在本批实施**：`surrogate-engine.mjs`
+  `SUPPORTED_VERSION_PREFIXES=['1.','2.']` 仍拒 3.1.0-fixseg。它属行为改动
+  （3.x 模型特征集可能与 2.x 不同），归 P3 消费回流阶段单独验证，本批保持零行为变化。
+- 版本一致性修复：`manifest.json` 自 0.2.6 起漏更（0.2.7 未同步），本批对齐到 0.2.8。
+
 ## [0.2.7] - 2026-10-08 — P1 收口（pipeline 计数透传 + 升级注意 + 置信度修正）
 
 本批修复源于 v0.2.6 的 1000 案例 + 10 万案例独立压测复盘（外部测试者），均为 P1 级、不阻塞 0.2.6 集成。

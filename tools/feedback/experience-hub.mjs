@@ -100,11 +100,17 @@ function cmdCapture(args) {
       const p = row.params ?? {}
       // 本地经验样本（models/experience/ 不出网）：存代理模型所需的全部特征
       // （features = stator_od/stator_id/core_length/poles + l0_eff）与结论字段。
+      // N1 修复（0.2.8）：矩阵行是 L1 口径命名（speed/voltage），旧代码误读
+      // speed_rpm/voltage_v（spec 口径）导致两键恒 undefined、JSON.stringify 静默丢弃
+      // ⇒ 样本 0% 带工况、designs.db.l0_residuals spec 覆盖率仅 ~2%。
+      // 现值改从 L1 键取，键名保持 spec 口径（与 design_exp 契约一致）。
       lines.push(JSON.stringify({
         motor_type: p.motor_type ?? 'induction',
         stator_od: p.stator_od, stator_id: p.stator_id,
         core_length: p.core_length, poles: p.poles,
-        power_kw: p.power_kw, speed_rpm: p.speed_rpm, voltage_v: p.voltage_v,
+        power_kw: p.power_kw,
+        speed_rpm: p.speed,          // 矩阵行 L1 键 speed → spec 键 speed_rpm
+        voltage_v: p.voltage,        // 矩阵行 L1 键 voltage → spec 键 voltage_v
         line_freq_hz: p.line_freq_hz ?? 50, cooling: p.cooling,
         efficiency_raw: row.efficiency_raw,
         feasible: row.feasible === true,
