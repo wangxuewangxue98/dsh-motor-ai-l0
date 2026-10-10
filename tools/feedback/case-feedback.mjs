@@ -21,8 +21,8 @@
  */
 
 import { buildParamMatrix } from '../l0/param-matrix.mjs'
-import { validateDesign } from '@yourscope/dsh-motor-ai-core'
-import { RULE_CATALOG } from '@yourscope/dsh-motor-ai-core'
+import { validateDesign } from '@wangxue98/dsh-motor-ai-core'
+import { RULE_CATALOG } from '@wangxue98/dsh-motor-ai-core'
 
 /** 脱敏自检规则表：任一命中即拒绝输出草稿。 */
 const SENSITIVE_RULES = [

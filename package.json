@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "type": "module",
   "main": "./index.mjs",
-  "description": "电机AI辅助设计软件插件 · L0 层（毫秒级广筛）；共享核心逻辑 @yourscope/dsh-motor-ai-core",
+  "description": "电机AI辅助设计软件插件 · L0 层（毫秒级广筛）；共享核心逻辑 @wangxue98/dsh-motor-ai-core",
   "files": [
     "index.mjs",
     "cordis.patch.yml",
@@ -40,7 +40,7 @@
     }
   },
   "dependencies": {
-    "@yourscope/dsh-motor-ai-core": "^1.0.0"
+    "@wangxue98/dsh-motor-ai-core": "^1.0.0"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh": ">=0.1.2 <0.2.0"

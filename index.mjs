@@ -27,7 +27,7 @@
  */
 
 import Schema from '@deepseek-ai/schemastery'
-import { assertLevelImplemented, isLevelEnabled, tierOf } from '@yourscope/dsh-motor-ai-core'
+import { assertLevelImplemented, isLevelEnabled, tierOf } from '@wangxue98/dsh-motor-ai-core'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 

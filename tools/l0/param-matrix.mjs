@@ -30,12 +30,12 @@ import {
   PMSM_DEFAULT_POLE_ARC, PMSM_DEFAULT_PM_THICK_MM,
   DEFAULT_LINE_FREQ_HZ, DEFAULT_INSULATION_CLASS,
   round1, round2, clamp,
-} from '@yourscope/dsh-motor-ai-core'
+} from '@wangxue98/dsh-motor-ai-core'
 import {
   normalizeSpec, assertMatrixShape, COOLING_ALLOWED, buildHandoff,
-} from '@yourscope/dsh-motor-ai-core'
-import { computeTorque, computeD2L, computeLambda, validateLambda, deriveElectricalClosure } from '@yourscope/dsh-motor-ai-core'
-import { getUsageSink, logUsage } from '@yourscope/dsh-motor-ai-core'
+} from '@wangxue98/dsh-motor-ai-core'
+import { computeTorque, computeD2L, computeLambda, validateLambda, deriveElectricalClosure } from '@wangxue98/dsh-motor-ai-core'
+import { getUsageSink, logUsage } from '@wangxue98/dsh-motor-ai-core'
 
 /** 工具入参声明（与 defineTool.parameters 保持一对一，避免两边漂移） */
 export const TOOL_PARAMS = {

@@ -17,11 +17,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { normalizeSpec } from '@yourscope/dsh-motor-ai-core'
+import { normalizeSpec } from '@wangxue98/dsh-motor-ai-core'
 import { buildParamMatrix } from './param-matrix.mjs'
 import { runDesignValidate } from './design-validate.mjs'
 import { runL0Estimate } from './l0-estimate.mjs'
-import { getUsageSink, logUsage } from '@yourscope/dsh-motor-ai-core'
+import { getUsageSink, logUsage } from '@wangxue98/dsh-motor-ai-core'
 
 /** 工具入参声明（矩阵生成参数 + 聚合控制） */
 export const TOOL_PARAMS = {

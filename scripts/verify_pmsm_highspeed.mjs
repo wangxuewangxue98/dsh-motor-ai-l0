@@ -27,9 +27,9 @@ const head = (t) => { console.log(''); line('═'); console.log(t); line('═') 
 import { buildParamMatrix } from '../tools/l0/param-matrix.mjs'
 import { runL0Estimate } from '../tools/l0/l0-estimate.mjs'
 import { runDesignValidate } from '../tools/l0/design-validate.mjs'
-import { yokeFluxDensity, airGapFluxActual } from '@yourscope/dsh-motor-ai-core'
-import { solveYokeAndFrame, STACKING_FACTOR } from '@yourscope/dsh-motor-ai-core'
-import { assessApplicability } from '@yourscope/dsh-motor-ai-core'
+import { yokeFluxDensity, airGapFluxActual } from '@wangxue98/dsh-motor-ai-core'
+import { solveYokeAndFrame, STACKING_FACTOR } from '@wangxue98/dsh-motor-ai-core'
+import { assessApplicability } from '@wangxue98/dsh-motor-ai-core'
 
 const SPEC = {
   power_kw: 200, speed_rpm: 22000, voltage_v: 380,

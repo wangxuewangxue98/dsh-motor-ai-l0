@@ -24,36 +24,36 @@ import { fileURLToPath } from 'node:url'
 import {
   LEVEL_ORDER, IMPLEMENTED_LEVELS,
   normalizeLevel, isLevelEnabled, assertLevelImplemented, tierOf,
-} from '@yourscope/dsh-motor-ai-core'
+} from '@wangxue98/dsh-motor-ai-core'
 import {
   L1_STRICT_REQUIRED, L1_MATRIX_FIELDS, PARAM_SCHEMA, L0_NATIVE_FIELDS,
   L1_MIRROR_FIELDS, normalizeSpec, assertMatrixShape, pickL1Payload,
-} from '@yourscope/dsh-motor-ai-core'
+} from '@wangxue98/dsh-motor-ai-core'
 import {
   computeTorque, computeD2L, computeLambda, validateLambda, quickL0Estimate,
   deriveElectricalClosure,
-} from '@yourscope/dsh-motor-ai-core'
+} from '@wangxue98/dsh-motor-ai-core'
 import { buildParamMatrix, recommendPoles, poleCandidates } from '../tools/l0/param-matrix.mjs'
 import { runL0Estimate } from '../tools/l0/l0-estimate.mjs'
 import { runDesignValidate } from '../tools/l0/design-validate.mjs'
 import {
   RULE_CATALOG, validateDesign, validateDesignBatch,
   toothFluxDensity, yokeFluxDensity, airGapFluxActual,
-} from '@yourscope/dsh-motor-ai-core'
+} from '@wangxue98/dsh-motor-ai-core'
 import {
   assessApplicability, scenarioFromMatrix, APPLICABILITY,
-} from '@yourscope/dsh-motor-ai-core'
-import { solveYokeAndFrame, yokeThicknessForFlux, resolveMotorType } from '@yourscope/dsh-motor-ai-core'
-import { selectFamilySegment, loadSurrogateModel, SUPPORTED_VERSION_PREFIXES } from '@yourscope/dsh-motor-ai-core'
-import { evaluateSuite, makeBaseline, compareBaseline } from '@yourscope/dsh-motor-ai-core'
+} from '@wangxue98/dsh-motor-ai-core'
+import { solveYokeAndFrame, yokeThicknessForFlux, resolveMotorType } from '@wangxue98/dsh-motor-ai-core'
+import { selectFamilySegment, loadSurrogateModel, SUPPORTED_VERSION_PREFIXES } from '@wangxue98/dsh-motor-ai-core'
+import { evaluateSuite, makeBaseline, compareBaseline } from '@wangxue98/dsh-motor-ai-core'
 import {
   TELEM_FIELDS, sanitizeTelemetry, aggregateUsage,
-} from '@yourscope/dsh-motor-ai-core'
+} from '@wangxue98/dsh-motor-ai-core'
 import {
   buildDesignExp, isSpecComplete, recIdOf, scanForbidden,
   DESIGN_EXP_FORBIDDEN, DESIGN_EXP_SPEC_CORE,
   getExperienceSink, logExperience, gcExperience, readPendingRecords,
-} from '@yourscope/dsh-motor-ai-core'
+} from '@wangxue98/dsh-motor-ai-core'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
