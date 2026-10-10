@@ -17,7 +17,7 @@
 import { readFileSync, existsSync, readdirSync, statSync, writeFileSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { readdir, access } from 'node:fs/promises'
-import { join, dirname, resolve, relative } from 'node:path'
+import { join, dirname, resolve, relative, sep } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
@@ -1535,6 +1535,39 @@ check('P0 发布物无本机绝对路径泄漏（0.2.4/0.2.5 教训固化）', (
   }
     must(bad.length === 0, `发布目录含本机绝对路径：\n     ${bad.join('\n     ')}\n     修法：改用环境变量/占位符，或把该文件移出 package.json files`)
   return `扫描 ${dirs.length} 个发布目录，0 处盘符绝对路径`
+})
+
+// 发布门禁：0.3.0 在 DSH 启动即崩——入口残留对本地 lib 的动态 import，
+// 但 lib 不在 files 白名单 ⇒ 发布物缺该模块 ⇒ ERR_MODULE_NOT_FOUND ⇒ required 插件激活失败。
+// 固化：解包后断言「所有进包 .mjs 的相对 import 必须命中包内文件」；漏网必报红。
+check('发布门禁：进包 .mjs 的相对 import 必须命中包内文件（0.3.0 崩溃根因固化）', () => {
+  // 取发布清单（npm pack --dry-run --json）；shell:true 兼容 Windows 的 npm.cmd
+  const packOut = execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: ROOT, encoding: 'utf8', shell: true })
+  const packInfo = JSON.parse(packOut)
+  const packed = (packInfo[0] && packInfo[0].files ? packInfo[0].files : []).map(f => f.path)
+  const packedSet = new Set(packed)
+  let count = 0
+  const missing = []
+  for (const pf of packed) {
+    if (!pf.endsWith('.mjs')) continue
+    const abs = join(ROOT, pf)
+    if (!existsSync(abs)) continue
+    let src = readFileSync(abs, 'utf8')
+    // 剥 // 行注释与 /* */ 块注释，避免注释里的字面 import 触发误报
+    src = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    const re = /(?:import|await\s+import|require)\s*\(?\s*['"]([^'"]+)['"]\s*\)?/g
+    let m
+    while ((m = re.exec(src))) {
+      const spec = m[1]
+      if (!spec.startsWith('.')) continue
+      const rr = relative(ROOT, resolve(ROOT, dirname(pf), spec)).split(sep).join('/')
+      count++
+      if (!packedSet.has(rr)) missing.push(`${pf} -> ${spec} (解析为 ${rr})`)
+    }
+  }
+  must(missing.length === 0,
+    `进包文件引用但未进包的相对模块（必导致 DSH 加载崩溃）：\n     ${missing.join('\n     ')}\n     修法：把该文件加入 package.json files，或把 import 改为依赖包路径`)
+  return `扫描 ${packed.filter(p => p.endsWith('.mjs')).length} 个进包 .mjs 共 ${count} 处相对 import，0 处缺包`
 })
 
 // ---------- 设计经验脱敏回传（design_exp）门禁 ----------

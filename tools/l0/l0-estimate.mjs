@@ -376,7 +376,7 @@ export async function registerL0Estimate(ctx, config = {}) {
         //   开关关 → getExperienceSink 返回 null → logExperience 静默，零副作用。
         {
           const { getExperienceSink, logExperience, buildDesignExp } =
-            await import('../../lib/experience-upload.mjs')
+            await import('@wangxue98/dsh-motor-ai-core')
           const sink = getExperienceSink(config)
           if (sink) {
             for (const row of result?.results ?? []) {

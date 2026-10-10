@@ -5,6 +5,23 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.3.1] - 2026-10-10 — 🐛 修复：DSH 启动时加载崩溃（缺 `lib/` 模块）
+
+> **性质：缺陷修复 + 发布门禁补强。0.3.0 在 DSH Desktop 中激活即崩，导致 harness 无法启动。**
+
+### 根因
+- `index.mjs` 与 `tools/l0/l0-estimate.mjs` 残留 **3 处动态 `await import('./lib/...')`**（telemetry / experience-upload），指向本地 `lib/`。
+- 抽 core 重构时静态 import 已改指 `@wangxue98/dsh-motor-ai-core`，但**动态 import 漏改**；而 `lib/` 不在 `files` 白名单 ⇒ 发布物不含 `lib/` ⇒ DSH 一加载即 `ERR_MODULE_NOT_FOUND`，required 插件激活失败。
+- 放大器：`npm run verify` 在本地源跑（本地有 `lib/`），动态 import 可解析 ⇒ **103/103 假绿**；上一轮解包核验又只查 P0/版本/激活模块，漏了「入口引用的每个文件是否在包内」的完整性检查。
+
+### 修复
+- 3 处动态 import 全部 repoint 到 `@wangxue98/dsh-motor-ai-core`（单一真源，符合抽 core 初衷）。
+- 补 core `index.mjs` 漏导出的 `reportTelemetry` / `reportExperience`（core 升至 `1.0.1`）。
+- **新增发布门禁**：解包后校验「`index.mjs` 静态/动态 import 的每个相对路径文件必须存在于包内」，杜绝「发布面缺文件」类缺陷再次漏网。
+
+### 影响
+- 0.3.0 用户升级到 0.3.1 后 DSH 可正常激活；无功能/接口变更。
+
 ## [0.3.0] - 2026-10-10 — 📦 架构重构：抽取共享核心包 `@wangxue98/dsh-motor-ai-core`
 
 > **性质：架构改进。为 L1/L2 插件扩展做准备，实现 L0/L1/L2 三层共享业务逻辑。**
