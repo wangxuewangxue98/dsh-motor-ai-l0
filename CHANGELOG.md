@@ -5,6 +5,23 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.3.0] - 2026-10-10 — 📦 架构重构：抽取共享核心包 `@yourscope/dsh-motor-ai-core`
+
+> **性质：架构改进。为 L1/L2 插件扩展做准备，实现 L0/L1/L2 三层共享业务逻辑。**
+
+### 变更内容
+- 新建 `D:\dsh-motor-ai-core` 包，包含所有 lib/*.mjs 共享模块
+- `dsh-motor-ai-l0` 改为依赖 core 包（`file:../dsh-motor-ai-core`）
+- 迁移 14 个 .mjs 文件的 import 路径从相对路径改为 `@yourscope/dsh-motor-ai-core`
+- 版本升至 0.3.0
+
+### 目标架构（两层次）
+```
+dsh-motor-ai-core     ← 共享核心库（L0/L1/L2 共用）
+├── dsh-motor-ai-l0   ← 免费版（当前 L0 毫秒级预筛）
+└── dsh-motor-ai      ← 完整版（未来：L1 RMxprt + L2 Motor-CAD）
+```
+
 ## [0.2.10] - 2026-10-10 — 🔴 修复 design_exp 回流通道实际不可用（v0.2.9 双坑）
 
 > **性质：紧急修复。v0.2.9 的 design_exp 脱敏回流通道在真实链路上是坏的，虽门禁 101/101 全绿。**

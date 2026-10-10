@@ -18,10 +18,10 @@
  */
 
 import { validateDesign, validateDesignBatch, RULE_CATALOG, ESCALATABLE_RULES }
-  from '../../lib/design-rules.mjs'
-import { normalizeSpec } from '../../lib/param-schema.mjs'
-import { DEFAULT_LINE_FREQ_HZ } from '../../lib/motor-constants.mjs'
-import { getUsageSink, logUsage } from '../../lib/usage-log.mjs'
+  from '@yourscope/dsh-motor-ai-core'
+import { normalizeSpec } from '@yourscope/dsh-motor-ai-core'
+import { DEFAULT_LINE_FREQ_HZ } from '@yourscope/dsh-motor-ai-core'
+import { getUsageSink, logUsage } from '@yourscope/dsh-motor-ai-core'
 
 /** 工具入参声明 */
 export const TOOL_PARAMS = {

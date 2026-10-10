@@ -21,17 +21,17 @@
 
 import {
   normalizeSpec, assertMatrixShape, buildHandoff, L0_NATIVE_FIELDS, L1_MIRROR_FIELDS,
-} from '../../lib/param-schema.mjs'
-import { quickL0Estimate } from '../../lib/formula-engine.mjs'
-import { resolveMotorType } from '../../lib/motor-constants.mjs'
+} from '@yourscope/dsh-motor-ai-core'
+import { quickL0Estimate } from '@yourscope/dsh-motor-ai-core'
+import { resolveMotorType } from '@yourscope/dsh-motor-ai-core'
 import {
   loadSurrogateModel,
   predictBatch,
   buildSurrogateResult,
   DEFAULT_CONFIDENCE_THRESHOLD,
-} from '../../lib/surrogate-engine.mjs'
-import { getUsageSink, logUsage } from '../../lib/usage-log.mjs'
-import { assessApplicability, scenarioFromMatrix } from '../../lib/applicability-gate.mjs'
+} from '@yourscope/dsh-motor-ai-core'
+import { getUsageSink, logUsage } from '@yourscope/dsh-motor-ai-core'
+import { assessApplicability, scenarioFromMatrix } from '@yourscope/dsh-motor-ai-core'
 
 /** 工具入参声明 */
 export const TOOL_PARAMS = {
