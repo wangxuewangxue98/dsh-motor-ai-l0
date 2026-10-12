@@ -5,6 +5,53 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.3.3] - 2026-10-12 — 🔧 发布自检脚本 EBUSY 免疫（无功能变化）
+
+### Fixed
+- **`scripts/verify.mjs` 全面摆脱子进程 spawn 依赖**（本机 node 进程内 spawn 持续
+  `EBUSY`，曾导致两项门禁无法执行）：
+  1. 「进包 .mjs 相对 import 命中」门禁：由 `execFileSync('npm', ['pack','--dry-run','--json'], {shell:true})`
+     改为**纯 Node 的 `package.json files` 白名单展开**（含 `!` 排除与 `*` glob）。
+     语义等价——npm 在存在 `files` 时严格按白名单打包、`.npmignore` 不生效（见该文件首行注释），
+     已用真实 `npm pack` 交叉验证展开结果一致（53 个进包文件）。
+     顺带修复该门禁实现的两个 bug：`files` 项带尾斜杠（`tools/`）时路径拼出
+     `tools//l0//x.mjs` 双斜杠、与 import 解析结果不匹配 ⇒ 误报缺包。
+  2. 「配额闸门运行时行为」门禁：由 execFileSync 子进程改为 **ESM 顶层 await 预跑**
+     （`_selftest_quota.mjs` 导出 `runQuotaSelfTest()`，verify.mjs 顶层 await 后同步读结果）。
+     原因：verify 的 `check()` 是同步收集器（`const detail = fn()`），传 async fn 会静默假绿灯；
+     子进程通道又受 EBUSY 影响。顶层 await 是既不骗人也不依赖 spawn 的唯一通道。
+- `scripts/_selftest_quota.mjs` 重构为「导出函数 + 仅主模块自跑」双通道
+  （`import.meta.url` 主模块判定），保留独立 CLI 能力（退出码 0/1）。
+
+### 说明
+- **无运行时功能变化**：0.3.2 的配额闸门功能完整；本版仅让发布自检脚本在
+  spawn 受限环境（CI/本机故障态）下仍可执行，且消除一次真实误报风险。
+- 版本三重：`package.json` = `SKILL.md metadata.version` = `CHANGELOG` 最新条目 = 0.3.3。
+
+## [0.3.2] - 2026-10-12 — 🚦 免费额度闸门（L2 商业闭环 · 免费层落地）
+
+### Added
+- **每日免费额度闸门（G1）**：新增 `lib/quota.mjs`（`checkFreeQuota` / `enforceQuota` /
+  `buildQuotaExceededMessage` / `getDeviceId`），四个 L0 工具
+  （`motor_param_matrix` / `motor_l0_estimate` / `motor_design_validate` / `motor_l0_pipeline`）
+  `execute` 首行接入。默认上限 5 次/天（后端 `DSH_FREE_DAILY_LIMIT` 可调）。
+- **`lib/` 进入 files 白名单**：此前 `lib/` 不在 `package.json.files` 中，lib 模块不会进包——
+  本次新增的 `lib/quota.mjs` 依赖其入包（否则四工具 import 必崩 `ERR_MODULE_NOT_FOUND`，
+  与 0.3.0 事故同形态）。入包后 lib/ 共 12 个文件。
+- **verify.mjs 新增 2 项门禁**：静态契约（导出 + 四工具接入 + device-id 算法锚定）+
+  运行时行为（fail-open / 开关绕过 / `allowed===false` 拦截 / 算法一致 / 引导文案），
+  后者走 ESM 顶层 await 预跑（check() 为同步收集器，async fn 会静默假绿灯；
+  且不依赖子进程 spawn）。
+
+### 设计约定（改动前必读）
+- **断网 fail-open**：后端不可达一律放行，宁可少限一次不可错杀免费用户。
+- **只有显式 `allowed===false` 才拦截**：后端任何异常/非预期响应按放行处理。
+- **getDeviceId 算法与完整版 `lib/license.mjs:86` 逐字节一致**
+  （`sha256(hostname|platform|arch).slice(0,16)`）——同一设备上 l0 与完整版
+  必须是同一 device_id，否则后端免费额度账分裂成两本。改此处属事故级改动。
+- 运维开关：`config.freeQuotaEnabled === false` 直接绕过闸门。
+- 引导文案不含 `activate` 工具（l0 未提供），改为引导安装完整版 `dsh-motor-ai`。
+
 ## [0.3.1] - 2026-10-10 — 🐛 修复：DSH 启动时加载崩溃（缺 `lib/` 模块）
 
 > **性质：缺陷修复 + 发布门禁补强。0.3.0 在 DSH Desktop 中激活即崩，导致 harness 无法启动。**

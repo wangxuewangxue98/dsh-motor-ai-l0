@@ -31,6 +31,7 @@ import {
   DEFAULT_CONFIDENCE_THRESHOLD,
 } from '@wangxue98/dsh-motor-ai-core'
 import { getUsageSink, logUsage } from '@wangxue98/dsh-motor-ai-core'
+import { enforceQuota } from '../../lib/quota.mjs'
 import { assessApplicability, scenarioFromMatrix } from '@wangxue98/dsh-motor-ai-core'
 
 /** 工具入参声明 */
@@ -362,6 +363,8 @@ export async function registerL0Estimate(ctx, config = {}) {
     async execute(args) {
       const t0 = Date.now()
       try {
+        const quotaErr = await enforceQuota(config)
+        if (quotaErr) return quotaErr.error
         const result = runL0Estimate(args, config)
         logUsage(getUsageSink(config), {
           tool: 'motor_l0_estimate', ok: true, elapsed_ms: Date.now() - t0,

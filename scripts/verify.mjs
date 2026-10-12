@@ -92,6 +92,16 @@ function must(cond, msg) {
   if (!cond) throw new Error(msg)
 }
 
+// 免费额度闸门运行时自检：顶层 await 预跑（check() 是同步收集器，async fn 会假绿灯；
+// 且本机 node spawn 持续 EBUSY，子进程通道不可用 —— 顶层 await 是唯一可靠通道）
+import { runQuotaSelfTest } from './_selftest_quota.mjs'
+let QUOTA_SELF
+try {
+  QUOTA_SELF = await runQuotaSelfTest()
+} catch (err) {
+  QUOTA_SELF = { ok: false, fails: ['selftest-crashed'], lines: [String(err && err.stack || err)] }
+}
+
 // ---------- 1~4. 包与配置一致性 ----------
 const pkgPath = join(ROOT, 'package.json')
 check('package.json 可解析 + 语义化版本', () => {
@@ -1541,11 +1551,32 @@ check('P0 发布物无本机绝对路径泄漏（0.2.4/0.2.5 教训固化）', (
 // 但 lib 不在 files 白名单 ⇒ 发布物缺该模块 ⇒ ERR_MODULE_NOT_FOUND ⇒ required 插件激活失败。
 // 固化：解包后断言「所有进包 .mjs 的相对 import 必须命中包内文件」；漏网必报红。
 check('发布门禁：进包 .mjs 的相对 import 必须命中包内文件（0.3.0 崩溃根因固化）', () => {
-  // 取发布清单（npm pack --dry-run --json）；shell:true 兼容 Windows 的 npm.cmd
-  const packOut = execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: ROOT, encoding: 'utf8', shell: true })
-  const packInfo = JSON.parse(packOut)
-  const packed = (packInfo[0] && packInfo[0].files ? packInfo[0].files : []).map(f => f.path)
-  const packedSet = new Set(packed)
+  // 进包清单 = package.json files 白名单展开。不 spawn `npm pack --dry-run`：
+  // ① 本机 node 进程内 spawn 可能持续 EBUSY（曾实测连 spawn 自身 node.exe 都失败）；
+  // ② npm 在存在 files 时严格按白名单打包、.npmignore 不生效（见 .npmignore 首行注释），
+  //    语义与 `npm pack --dry-run --json` 等价（已用真实 npm pack 交叉验证文件数一致）。
+  const globToRe = (g) => new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]') + '$')
+  const entries = (pkg && pkg.files) || []
+  const excludes = entries.filter(e => e.startsWith('!')).map(e => e.slice(1))
+  const includes = entries.filter(e => e && !e.startsWith('!'))
+  const isExcluded = (rel) => excludes.some(g => globToRe(g).test(rel))
+  const packedSet = new Set()
+  const walk = (rel) => {
+    if (isExcluded(rel)) return
+    let st
+    try { st = statSync(join(ROOT, rel)) } catch { return }
+    if (st.isDirectory()) {
+      const parts = rel.split('/')
+      if (parts.includes('node_modules') || parts.includes('.git')) return
+      for (const name of readdirSync(join(ROOT, rel))) walk(rel + '/' + name)
+    } else if (st.isFile()) {
+      packedSet.add(rel)
+    }
+  }
+  for (const e of includes) walk(e.replace(/\/+$/, ''))
+  packedSet.add('package.json')
+  const packed = [...packedSet]
   let count = 0
   const missing = []
   for (const pf of packed) {
@@ -1567,7 +1598,7 @@ check('发布门禁：进包 .mjs 的相对 import 必须命中包内文件（0.
   }
   must(missing.length === 0,
     `进包文件引用但未进包的相对模块（必导致 DSH 加载崩溃）：\n     ${missing.join('\n     ')}\n     修法：把该文件加入 package.json files，或把 import 改为依赖包路径`)
-  return `扫描 ${packed.filter(p => p.endsWith('.mjs')).length} 个进包 .mjs 共 ${count} 处相对 import，0 处缺包`
+  return `files 白名单展开 ${packed.length} 个进包文件；扫描 ${packed.filter(p => p.endsWith('.mjs')).length} 个 .mjs 共 ${count} 处相对 import，0 处缺包`
 })
 
 // ---------- 设计经验脱敏回传（design_exp）门禁 ----------
@@ -1749,6 +1780,33 @@ check('design_exp：readPendingRecords 必须在模块内有本地绑定（v0.2.
   // 运行时侧：re-export 的符号本身仍可被外部消费
   must(typeof readPendingRecords === 'function', 'readPendingRecords 对外导出丢失')
   return '本地 import + re-export 成对，对外导出可用'
+})
+
+// ---------- 50~51. 免费额度闸门（G1，v0.3.2 新增） ----------
+check('quota: lib/quota.mjs 导出契约 + 四 L0 工具接入（静态）', () => {
+  const p = join(ROOT, 'lib', 'quota.mjs')
+  must(existsSync(p), 'lib/quota.mjs 不存在（l0 免费档配额闸门缺失）')
+  const src = readFileSync(p, 'utf8')
+  must(/export\s+(async\s+)?function\s+checkFreeQuota/.test(src), '缺少 export checkFreeQuota')
+  must(/export\s+(async\s+)?function\s+enforceQuota/.test(src), '缺少 export enforceQuota')
+  must(/export\s+(async\s+)?function\s+getDeviceId/.test(src), '缺少 export getDeviceId')
+  // 设备指纹算法锚定：与完整版 lib/license.mjs:86 必须逐字节一致，改这里 = 两端额度账分裂
+  must(/createHash\('sha256'\)[\s\S]{0,200}slice\(0,\s*16\)/.test(src),
+    'getDeviceId 算法被改（应为 sha256(...).slice(0,16)）')
+  for (const t of ['param-matrix', 'l0-estimate', 'design-validate', 'pipeline']) {
+    const s = readFileSync(join(ROOT, 'tools', 'l0', `${t}.mjs`), 'utf8')
+    must(/import\s*\{\s*enforceQuota\s*\}\s*from\s*'\.\.\/\.\.\/lib\/quota\.mjs'/.test(s),
+      `${t}.mjs 缺少 quota.mjs import`)
+    must(/await\s+enforceQuota\(config\)/.test(s), `${t}.mjs execute 未接入 enforceQuota`)
+  }
+  return '契约齐备 + 四工具 import/调用齐备 + device-id 算法锚定'
+})
+
+check('quota: 运行时行为（fail-open/开关/拦截/算法一致）—— 顶层 await 预跑', () => {
+  must(QUOTA_SELF && QUOTA_SELF.ok === true,
+    `配额运行时自检失败: ${((QUOTA_SELF && QUOTA_SELF.fails) || ['unknown']).join(', ')}`)
+  const passed = QUOTA_SELF.lines.filter(l => l.startsWith('✅')).length
+  return `${passed} 项行为全过（${QUOTA_SELF.lines.map(l => l.split(' | ')[0].replace(/^[✅❌]\s*/, '')).join('; ')}）`
 })
 
 // ---------- 输出 ----------
