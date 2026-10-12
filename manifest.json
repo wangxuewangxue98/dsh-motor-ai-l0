@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "id": "cn.motorai.dsh-motor-ai-l0",
   "kind": "plugin",
-  "entry": ".",
+  "entry": "index.mjs",
   "name": "dsh-motor-ai-l0",
   "displayName": "电机AI辅助设计软件插件",
   "version": "0.4.2",
