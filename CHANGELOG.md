@@ -5,6 +5,21 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.4.3] - 2026-10-13 — 🔒 P0/P1 修复：免费额度开关显式化 + 权限声明 + dsh 兼容区间
+
+> **性质：透明度修复 + 清单声明修正；默认行为仅一处可关（freeQuotaEnabled），其余零回归。**
+
+### Fixed
+- 🔴 **P0 透明度**：`cordis.patch.yml` 配置块新增 `freeQuotaEnabled`（默认 `true`），用户可在插件配置中
+  显式关闭免费额度联网计数（此前该开关仅存在于 `lib/quota.mjs` 内部、未被暴露，用户无法关闭）。
+  `README.md` 新增「免费额度与联网行为」一节，诚实披露：默认开启、`POST /api/dsh/free-call`、
+  `device_id = sha256(hostname|platform|arch).slice(0,16)` 主机名指纹、后端不可达 fail-open、关闭方法。
+- 🟠 **P1 权限声明**：`manifest.json` 的 `permissions` 由 `[]` 改为真实能力
+  `["fs-read","fs-write","network","env","shell"]`（`shell` 来自随包发布的 `scripts/*.mjs` 中的 `child_process`）。
+- 🟠 **P1 dsh 兼容区间**：`package.json` 的 `peerDependencies["@deepseek-ai/dsh"]` 与
+  `dsh.compatibility.dsh` 由 `>=0.1.2 <0.2.0` 改为 `>=0.1.2 <0.3.0`，覆盖实测通过的 0.2.x 区间
+  （dsh.so L5 实测于 0.2.0-rc.2 / 0.2.1-alpha.2），消除声明自相矛盾。
+
 ## [0.4.2] - 2026-10-13 — 🔧 包络字段补齐（矩阵行补 `torque_margin_rated`）
 
 > **性质：字段补齐，无行为变更。**

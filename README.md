@@ -153,6 +153,34 @@ telemetryEndpoint: 'http://127.0.0.1:5000/api/admin/dsh-plugins/motor-ai-l0/usag
 telemetryIntervalSec: 300
 ```
 
+## 免费额度与联网行为（默认开启，与遥测相互独立）
+
+> ⚠️ **本插件有两条相互独立的「对外」通道，默认状态不同，请分别看待：**
+> - **遥测回传**（`telemetryEnabled` / `designExperienceUpload`）：默认 **关闭**，不配置 = 零外发（见上节）。
+> - **免费额度联网计数**（`freeQuotaEnabled`，本节）：默认 **开启**，每次工具调用前会向后端上报一次计数。
+
+**免费额度通道做什么：**
+
+- 每次工具调用前，插件向后端 `POST /api/dsh/free-call`，载荷 `{ plugin_id, device_id }`，
+  用于「每日免费次数」计数与限流引导。
+- 上报目标按序取：`config.commerceBackendUrl` → `config.backendUrl` → `env.DSH_BACKEND_URL`
+  → 回退 `http://127.0.0.1:5000`。
+- `device_id = sha256(hostname|platform|arch).slice(0, 16)`——以**主机名 + 平台 + 架构**派生的设备指纹，
+  用于跨调用归并同一台机器的免费额度账（与完整版 `dsh-motor-ai` 共用同一本账，故算法逐字节一致）。
+- **隐私兜底**：后端不可达 / 超时 / 任意异常均 `fail-open` 放行，**绝不**因此阻断工具调用；
+  离线环境等于「不计数但照常可用」。
+
+**如何关闭（P0 透明度修复，v0.4.3+）：**
+
+1. 打开 `cordis.patch.yml`，把配置块里的 `freeQuotaEnabled` 设为 `false`：
+   ```yaml
+   freeQuotaEnabled: false   # 关闭免费额度联网计数（仍本地放行）
+   ```
+2. 或在 DSH 运行时通过插件配置界面改写该键。
+3. 关闭后插件不再向后端 POST 计数，但免费次数限流也随之失效（本地恒放行）。
+
+此前的版本中该开关未被暴露到配置，导致「用户无法关闭」——已于 v0.4.3 修复。
+
 ## 社区反馈（结论式，永不自动提交）
 
 **遇到「我的工况跑不出方案 / 结果明显不合理」时，可以把结论反馈给作者。**
