@@ -53,12 +53,13 @@
         freeQuotaEnabled: true
         # ---- 接收端地址（可选：只影响数据回流与跨机额度归并）----
         # v0.5.0 起免费额度闸门本地闭环，不配也能正常限流；配了才有旁路计数与遥测回流。
-        # 取消下一行注释并改成你的域名即可启用：
-        # commerceBackendUrl: 'https://your-receiver.example.com'
+        # 默认指向官方接收端（Deno Deploy 2 + Deno KV，*.deno.net 域名境内直连实测可达）：
+        commerceBackendUrl: 'https://dsh-motor-ai-receiver.wangxuewangxue98.deno.net'
         # ⚠️ 中国大陆：*.workers.dev / *.vercel.app 域名被 DNS 污染不可达（实测），
-        #    请给 Worker 绑自定义域名，或改用 *.deno.dev / render.com / fly.io / railway.app。
-        # 接收端参考实现：Cloudflare Worker + D1（3 端点 /api/dsh/free-call|telemetry|experience + 3 表），
-        # 契约与 lib/quota.mjs 注释逐字一致；零服务器成本，免费额度 10 万次/天。
+        #    不要把地址指向这两类域名；*.deno.net / *.deno.dev / render.com / fly.io / railway.app 实测可达。
+        # 自建接收端参考实现：D:/dsh-motor-ai-receiver-deno（Deno Deploy + KV）与
+        # D:/dsh-motor-ai-receiver（Cloudflare Worker + D1），3 端点契约与 lib/quota.mjs 注释逐字一致。
+        # 不想回传任何数据 ⇒ 把上面一行改回 ''（空串），或把 freeQuotaEnabled 设为 false。
         # --- L1 预留（取消注释即激活，需同时实现 tools/l1/ 代码并扩展允许列表）---
         # l1Enabled: false
         # l1Config:

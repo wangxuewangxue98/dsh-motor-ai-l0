@@ -202,17 +202,22 @@ telemetryIntervalSec: 300
 > v0.5.0 起免费额度闸门已在本地闭环，**不部署接收端功能完全不受影响**。
 > 部署的收益：匿名使用数据回流 + 换机后额度归并。
 
-1. **接收端参考实现**：`dsh-motor-ai-receiver`（Cloudflare Worker + D1，零服务器成本，
-   免费额度 10 万次请求/天）。含 3 个端点与 3 张 D1 表，契约与 `lib/quota.mjs` 注释逐字一致：
+1. **官方接收端（已上线，开箱即用）**：`https://dsh-motor-ai-receiver.wangxuewangxue98.deno.net`
+   （Deno Deploy 2 + Deno KV，零服务器成本）。3 个端点契约与 `lib/quota.mjs` 注释逐字一致：
    - `POST /api/dsh/free-call` —— 免费额度旁路计数（每日 10 次口径，设备级）
    - `POST /api/dsh/telemetry` —— 脱敏聚合遥测（插件侧默认关闭）
    - `POST /api/dsh/experience` —— 设计经验样本（插件侧默认关闭）
-2. **部署后填写地址**：在 `cordis.patch.yml` 配置块取消注释并改成你的域名。
+   `cordis.patch.yml` 默认已配置该地址；不想回传改空串即可。
+2. **自建**：参考实现在 `dsh-motor-ai-receiver-deno`（Deno Deploy + KV，境内可达）与
+   `dsh-motor-ai-receiver`（Cloudflare Worker + D1，境外可达），部署后把地址改成你的域名。
 
 > 🔴 **中国大陆部署者请注意**：`*.workers.dev` 域名在境内**被 DNS 污染**，实测解析到 `103.252.115.49`
-> / `199.59.149.236` 等黑洞 IP、TCP 443 直连超时（同网络下 `registry.npmjs.org` 正常）。
-> 实测可达的替代：`*.deno.dev`、`render.com`、`onrender.com`、`fly.io`、`railway.app`；
-> `*.vercel.app` 同样被污染。若你的用户在国内，请**给 Worker 绑自定义域名**或改用上述平台。
+> / `199.59.149.236` 等黑洞 IP、TCP 443 直连超时（同网络下 `registry.npmjs.org` 正常）；
+> `*.vercel.app` 同样被污染。
+> **官方接收端已部署在 Deno Deploy 2**：`https://dsh-motor-ai-receiver.wangxuewangxue98.deno.net`
+> （`*.deno.net` 域名本机直连实测 200 / 1.3s，IP `69.67.170.170` 未被污染；线上闸门 10+2 拒实测通过），
+> `cordis.patch.yml` 默认已指向该地址。实测可达的其它平台：`*.deno.dev`、`render.com`、
+> `onrender.com`、`fly.io`、`railway.app`。若你的用户在国内，**不要**把地址指向 workers.dev。
 > 所幸 v0.5.0 起闸门已本地闭环，选不到可达后端也不会拖慢调用（旁路遥测非阻塞）。
 
 3. 接收端无鉴权（npm pack 即可读走任何内嵌 key），故按「统计信道」标准设计（append-only + 限流 + 白名单校验）。
