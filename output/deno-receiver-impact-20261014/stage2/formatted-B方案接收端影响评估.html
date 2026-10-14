@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="docx-page-size" content="A4">
+  <title>B 方案（Deno Deploy 接收端）走通后：对免费插件与完整版插件的影响评估及改进建议</title>
+  <style>
+  /* --- 页面规则：正文页脚居中页码；封面页无页脚 --- */
+  @page {
+    @bottom-center { content: counter(page); }
+  }
+  @page cover {
+    @bottom-center { content: none; }
+  }
+  section[role="cover"] { page: cover; }
+
+  :root {
+    --fs-h1: 20pt;
+    --fs-h2: 15pt;
+    --fs-h3: 13pt;
+    --fs-body: 12pt;
+    --fs-small: 10pt;
+    --fs-code: 10pt;
+    --fs-coverTitle: 22pt;
+    --fs-coverCategory: 14pt;
+    --fs-coverSubtitle: 14pt;
+    --fs-cardValue: 16pt;
+    --ff-heading: "微软雅黑", "Microsoft YaHei", "PingFang SC", sans-serif;
+    --ff-body: "宋体", SimSun, serif;
+    --ff-code: Consolas, "Source Code Pro", monospace;
+    --lh-body: 1.6;
+    --fw-bold: 700;
+    --color-primary: #1565C0;
+    --color-heading: #1A237E;
+    --color-text: #212121;
+    --color-muted: #616161;
+    --color-border: #E0E0E0;
+    --color-bg: #FFFFFF;
+    --color-highlight: #F5F7FA;
+    --color-accent: #00897B;
+    --color-danger: #C62828;
+    --color-success: #2E7D32;
+    --color-warning: #E65100;
+    --color-info: #01579B;
+    --color-callout-info-bg: rgba(1, 87, 155, 0.06);
+    --color-callout-warning-bg: rgba(230, 81, 0, 0.06);
+    --color-callout-danger-bg: rgba(198, 40, 40, 0.06);
+    --color-callout-success-bg: rgba(46, 125, 50, 0.06);
+    --color-summary-bg: #F5F7FA;
+    --color-summary-border: #1565C0;
+    --summary-border-width: 4px;
+    --radius-card: 8px;
+    --shadow-card: 0 2px 8px rgba(0,0,0,0.08);
+    --spacing-paragraph: 0.75em;
+    --spacing-section: 2em;
+    --spacing-block: 1em;
+    --spacing-2xs: 0.2em;
+    --spacing-xs: 0.3em;
+    --spacing-sm: 0.5em;
+    --spacing-md: 0.6em;
+    --spacing-lg: 0.8em;
+    --spacing-tocIndent: 1.5em;
+    --spacing-listIndent: 1.8em;
+    --spacing-cell: 0.7em;
+    --spacing-calloutGap: 0.75em;
+    --spacing-calloutText: 0.4em;
+    --margin-page: 2.5cm;
+    --page-content-width: 15.6cm;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--ff-body); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--color-text); background: var(--color-bg); max-width: var(--page-content-width); margin-left: auto; margin-right: auto; }
+
+  /* ---------- 封面 ---------- */
+  .report-cover { padding: var(--margin-page); background: var(--color-highlight); }
+  .cover-category { font-size: var(--fs-coverCategory); font-family: var(--ff-heading); font-weight: var(--fw-bold); color: var(--color-primary); letter-spacing: 0.08em; margin-bottom: var(--spacing-lg); text-align: left; }
+  .cover-title { font-size: var(--fs-coverTitle); font-family: var(--ff-heading); font-weight: var(--fw-bold); color: var(--color-heading); line-height: 1.35; margin-bottom: var(--spacing-sm); text-align: left; }
+  .cover-subtitle { font-size: var(--fs-coverSubtitle); color: var(--color-muted); margin-bottom: var(--spacing-section); text-align: left; }
+  .cover-meta { font-size: var(--fs-small); color: var(--color-muted); text-align: left; }
+  .cover-meta p { font-size: var(--fs-small); color: var(--color-muted); text-align: left; margin-bottom: var(--spacing-xs); }
+
+  /* ---------- 目录 ---------- */
+  .doc-toc { padding: var(--spacing-block) 0; }
+  .toc-title { font-family: var(--ff-heading); font-weight: var(--fw-bold); font-size: var(--fs-h2); color: var(--color-heading); margin-bottom: var(--spacing-md); text-align: left; }
+  .toc-list, .toc-list ol, .toc-list ul { list-style: none; list-style-type: none; padding-left: var(--spacing-tocIndent); }
+  .toc-list li { margin-bottom: var(--spacing-xs); font-size: var(--fs-body); text-indent: 0; text-align: left; }
+  .toc-list a { color: var(--color-primary); text-decoration: none; }
+
+  /* ---------- 执行摘要 ---------- */
+  .executive-summary { margin: var(--spacing-section) 0; padding: var(--spacing-section); border-left: var(--summary-border-width) solid var(--color-summary-border); background: var(--color-summary-bg); border-radius: 0 var(--radius-card) var(--radius-card) 0; }
+  .summary-header { margin-bottom: var(--spacing-block); }
+  .summary-header h2 { font-size: var(--fs-h2); font-family: var(--ff-heading); font-weight: var(--fw-bold); color: var(--color-heading); text-align: left; }
+  .summary-badge { font-size: var(--fs-small); color: var(--color-muted); font-style: italic; }
+  .summary-highlights { margin-bottom: var(--spacing-block); }
+  .summary-body p { font-size: var(--fs-body); text-align: left; margin-bottom: var(--spacing-paragraph); }
+
+  /* ---------- data-card ---------- */
+  [data-component="data-card"] { display: inline-flex; flex-direction: column; padding: var(--spacing-block); background: var(--color-bg); border-radius: var(--radius-card); box-shadow: var(--shadow-card); border-top: 3px solid var(--color-primary); min-width: 140px; margin-right: var(--spacing-lg); margin-bottom: var(--spacing-md); gap: var(--spacing-xs); }
+  [data-component="data-card"][data-title]::before { content: attr(data-title); font-size: var(--fs-small); color: var(--color-muted); font-weight: 400; margin-bottom: var(--spacing-2xs); }
+  .card-value { font-size: var(--fs-cardValue); font-weight: var(--fw-bold); line-height: 1.1; color: var(--color-text); }
+  .card-unit { font-size: var(--fs-small); color: var(--color-muted); }
+  [data-component="data-card"][data-color="success"] { border-top-color: var(--color-success); }
+  [data-component="data-card"][data-color="success"] .card-value { color: var(--color-success); }
+  [data-component="data-card"][data-color="warning"] { border-top-color: var(--color-warning); }
+  [data-component="data-card"][data-color="warning"] .card-value { color: var(--color-warning); }
+  [data-component="data-card"][data-color="danger"] { border-top-color: var(--color-danger); }
+  [data-component="data-card"][data-color="danger"] .card-value { color: var(--color-danger); }
+
+  /* ---------- 正文 ---------- */
+  .report-body h2 { font-size: var(--fs-h2); font-family: var(--ff-heading); font-weight: var(--fw-bold); color: var(--color-heading); margin-top: var(--spacing-section); margin-bottom: var(--spacing-paragraph); text-align: left; border-left: 4px solid var(--color-primary); padding-left: var(--spacing-sm); }
+  .report-body h3 { font-size: var(--fs-h3); font-family: var(--ff-heading); font-weight: var(--fw-bold); color: var(--color-heading); margin-top: var(--spacing-block); margin-bottom: var(--spacing-paragraph); text-align: left; }
+  .report-body p { font-size: var(--fs-body); font-family: var(--ff-body); text-align: left; margin-bottom: var(--spacing-paragraph); }
+  .report-body ol, .report-body ul { margin-bottom: var(--spacing-paragraph); padding-left: var(--spacing-listIndent); }
+  .report-body li { font-size: var(--fs-body); font-family: var(--ff-body); text-align: left; margin-bottom: var(--spacing-xs); }
+  .report-body strong { font-weight: var(--fw-bold); }
+  .report-body code { font-family: var(--ff-code); font-size: var(--fs-code); }
+
+  /* ---------- 表格 ---------- */
+  .data-table { width: 100%; border-collapse: collapse; margin-bottom: var(--spacing-block); }
+  .data-table th { background: var(--color-highlight); font-family: var(--ff-heading); font-size: var(--fs-small); font-weight: var(--fw-bold); color: var(--color-heading); padding: var(--spacing-sm) var(--spacing-cell); border: 1px solid var(--color-border); text-align: left; }
+  .data-table td { font-size: var(--fs-small); font-family: var(--ff-body); padding: var(--spacing-sm) var(--spacing-cell); border: 1px solid var(--color-border); text-align: left; vertical-align: top; }
+  .data-table td.c { text-align: center; }
+
+  /* ---------- 重点数据强调 ---------- */
+  .data-emphasis { color: var(--color-danger); font-weight: var(--fw-bold); }
+
+  /* ---------- callout ---------- */
+  [data-component="callout"] { display: flex; gap: var(--spacing-calloutGap); align-items: flex-start; padding: var(--spacing-block); margin: var(--spacing-paragraph) 0; border-radius: 4px; border-left: 4px solid; font-size: var(--fs-body); }
+  [data-component="callout"][data-variant="info"] { background: var(--color-callout-info-bg); border-left-color: var(--color-info); }
+  [data-component="callout"][data-variant="warning"] { background: var(--color-callout-warning-bg); border-left-color: var(--color-warning); }
+  [data-component="callout"][data-variant="danger"] { background: var(--color-callout-danger-bg); border-left-color: var(--color-danger); }
+  [data-component="callout"][data-variant="success"] { background: var(--color-callout-success-bg); border-left-color: var(--color-success); }
+  [data-component="callout"]::before { flex-shrink: 0; font-style: normal; }
+  [data-component="callout"][data-variant="info"]::before { content: "ℹ️"; }
+  [data-component="callout"][data-variant="warning"]::before { content: "⚠️"; }
+  [data-component="callout"][data-variant="danger"]::before { content: "🚫"; }
+  [data-component="callout"][data-variant="success"]::before { content: "✅"; }
+  .callout-content p { font-size: var(--fs-body); font-family: var(--ff-body); text-align: left; margin-bottom: var(--spacing-calloutText); }
+  .callout-content > :last-child { margin-bottom: 0; }
+
+  /* ---------- 附录 ---------- */
+  .appendix { border-top: 1px solid var(--color-border); margin-top: var(--spacing-section); padding-top: var(--spacing-block); }
+  .appendix p { font-size: var(--fs-small); color: var(--color-muted); text-align: left; margin-bottom: var(--spacing-calloutText); }
+  </style>
+</head>
+<body>
+  <!-- 封面内容独占一节 -->
+  <section role="cover" class="report-cover">
+    <p class="cover-category">技术评估报告 · 插件生态</p>
+    <p class="cover-title">B 方案（Deno Deploy 接收端）走通后：<br>对免费插件与完整版插件的影响评估及改进建议</p>
+    <p class="cover-subtitle">dsh-motor-ai-l0@0.5.0 与 dsh-motor-ai（完整版）接线核验 · 数据流分析 · 七项改进路线</p>
+    <div class="cover-meta">
+      <p>MOTOR-AI 插件工程组 | 2026-10-14 | v1.0（基于线上实测与源码核验）</p>
+      <p>评测对象：dsh-motor-ai-l0 0.5.0（npm latest）/ dsh-motor-ai full / dsh-motor-ai-receiver-deno</p>
+    </div>
+  </section>
+
+  <!-- 目录独占一节（目录页无页脚） -->
+  <section role="cover">
+    <nav class="doc-toc" aria-label="文档目录">
+      <p class="toc-title">目录</p>
+      <ol class="toc-list">
+        <li><a href="#section-1">一、背景与当前接线现状（代码事实）</a></li>
+        <li><a href="#section-2">二、对免费插件（dsh-motor-ai-l0 0.5.0）的影响</a></li>
+        <li><a href="#section-3">三、对完整版（dsh-motor-ai）的影响</a></li>
+        <li><a href="#section-4">四、风险与诚实边界（接收端侧）</a></li>
+        <li><a href="#section-5">五、后续改进建议（按优先级）</a></li>
+        <li><a href="#section-6">六、结论</a></li>
+      </ol>
+    </nav>
+  </section>
+
+  <!-- 正文：页码从 1 重起 -->
+  <section role="body" class="report-body" data-page-restart="1">
+    <div class="executive-summary">
+      <div class="summary-header">
+        <h2>执行摘要</h2>
+        <span class="summary-badge">Executive Summary</span>
+      </div>
+      <div class="summary-highlights">
+        <div data-component="data-card" data-title="接收端状态" data-color="success">
+          <span class="card-value">已上线</span>
+          <span class="card-unit">Deno Deploy 2 + KV</span>
+        </div>
+        <div data-component="data-card" data-title="闸门线上实测" data-color="primary">
+          <span class="card-value">10 + 2 拒</span>
+          <span class="card-unit">12 连发恰好 10 放行</span>
+        </div>
+        <div data-component="data-card" data-title="本地探针" data-color="primary">
+          <span class="card-value">13 / 13</span>
+          <span class="card-unit">断言全绿（临时 DSH_HOME）</span>
+        </div>
+        <div data-component="data-card" data-title="完整版影响" data-color="warning">
+          <span class="card-value">零影响</span>
+          <span class="card-unit">未预填地址、无端点接线</span>
+        </div>
+      </div>
+      <div class="summary-body">
+        <p>官方接收端 <code>https://dsh-motor-ai-receiver.wangxuewangxue98.deno.net</code> 已上线并实测通过（闸门 10+2 拒、直连 200 / 1.3s、IP 未被 DNS 污染）。对<strong>免费插件 l0@0.5.0</strong>：出厂即默认接线，每次工具调用旁路回传统计数据（非阻塞、不参与放行），「出厂即孤岛」在计数归并层面解决、在限流层面本就已本地闭环。对<strong>完整版</strong>：当前零影响、零风险，要对齐需发一版预填地址。telemetry / experience 两个端点目前无任何客户端接线，属契约预留。</p>
+      </div>
+    </div>
+
+    <main>
+      <h2 id="section-1">一、背景与当前接线现状（代码事实）</h2>
+      <p>B 方案的初衷是解决「出厂即孤岛」：插件分发出去后，官方收不到任何使用数据，免费额度计数也没有归并通道。接收端上线后，数据流并非「全自动贯通」——三侧（l0 / full / 接收端）的接线程度各不相同，先用代码事实把现状钉住。</p>
+
+      <h3>1.1 数据流全景</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:22%">数据流</th><th style="width:20%">发送方</th><th style="width:26%">目标端点</th><th style="width:32%">触发条件与阻塞性</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>免费额度旁路计数</td><td>l0 0.5.0（默认开）</td><td><code>POST /api/dsh/free-call</code></td><td>每次工具调用前；fire-and-forget，<strong>不阻塞调用链</strong></td></tr>
+          <tr><td>完整版旁路计数</td><td>full（未配置）</td><td>回落 <code>127.0.0.1:5000</code></td><td>仅 <code>tier==='free'</code>；连接被拒即忽略，不阻塞</td></tr>
+          <tr><td>聚合遥测</td><td>无客户端接线</td><td><code>/api/dsh/telemetry</code></td><td>预留；l0 的使用统计走管理端 telemetryEndpoint，是另一套</td></tr>
+          <tr><td>设计经验样本</td><td>无客户端接线</td><td><code>/api/dsh/experience</code></td><td>预留，暂无发送方</td></tr>
+        </tbody>
+      </table>
+      <div data-component="callout" data-variant="warning"><div class="callout-content">
+        <p>&nbsp;&nbsp;<strong>关键事实修正</strong>：接收端的 telemetry / experience 两个端点目前<strong>没有任何插件代码调用</strong>（全仓 grep <code>api/dsh/telemetry</code>、<code>api/dsh/experience</code> 零命中）。接收端当前唯一活的流量是 free-call 旁路计数。</p>
+      </div></div>
+
+      <h3>1.2 三侧接线核验表（2026-10-14 实测）</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:18%">接线项</th><th style="width:30%">l0（免费）</th><th style="width:32%">full（完整版）</th><th style="width:20%">证据锚点</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>限额口径</td><td>本地硬闸，默认 10 次/天</td><td>本地硬闸，默认 10 次/天</td><td>l0 <code>quota.mjs:98</code>；full <code>quota.mjs:39,115</code></td></tr>
+          <tr><td>地址解析链</td><td>同链 → <strong>空（零请求）</strong></td><td>同链 → 回落 <code>127.0.0.1:5000</code></td><td>l0 <code>quota.mjs:81-84</code>；full <code>quota.mjs:88-91</code></td></tr>
+          <tr><td>默认地址</td><td><strong>已预填官方接收端</strong></td><td>未预填（cordis.patch.yml 无该项）</td><td>两侧 cordis.patch.yml</td></tr>
+          <tr><td>free-call 旁路</td><td>有，fire-and-forget</td><td>有，仅 <code>tier==='free'</code> 时</td><td>l0 <code>quota.mjs:201,256</code>；full <code>quota.mjs:223,283</code></td></tr>
+          <tr><td>遥测/经验端点</td><td>无接线</td><td>无接线</td><td>全仓 grep 零命中</td></tr>
+          <tr><td>本地遥测总开关</td><td><code>telemetryEnabled: false</code>（默认关）</td><td>—</td><td>l0 <code>cordis.patch.yml:29</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="section-2">二、对免费插件（dsh-motor-ai-l0 0.5.0）的影响</h2>
+      <p>免费插件是本次 B 方案唯一真正接线的客户端。总体判断：<strong>收益在归并与能见度，代价在隐私立场与两个口径差</strong>；限流能力本身在 0.5.0 已本地闭环，不依赖接收端。</p>
+
+      <h3>2.1 正向影响</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:20%">维度</th><th style="width:16%">变化</th><th style="width:64%">说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>跨机额度归并</td><td class="c">✅ 新增</td><td>旁路响应若报 <code>allowed:false</code> 且 <code>used &gt; 本地计数</code>，会把本地计数抬升——重装 / 换目录导致的清零可被追回</td></tr>
+          <tr><td>使用能见度</td><td class="c">✅ 从 0 到 1</td><td>官方首次可观测匿名调用量（设备哈希 + 调用次数），「出厂即孤岛」在计数层面解除</td></tr>
+          <tr><td>延迟代价</td><td class="c">✅ 零</td><td>旁路 fire-and-forget + 定时器 <code>unref()</code>；实测后端挂死时 <code>checkFreeQuota</code> <span class="data-emphasis">1ms</span> 返回（探针 D3：11 次共 31ms）</td></tr>
+          <tr><td>功能可用性</td><td class="c">✅ 不受影响</td><td>放行决策 100% 本地（<code>free-quota.json</code>），后端不可达 = 不归并、照常放行</td></tr>
+        </tbody>
+      </table>
+
+      <h3>2.2 需要如实告知的代价</h3>
+      <ol>
+        <li><strong>默认即外发</strong>：<code>freeQuotaEnabled: true</code> + 预填地址，安装后每次工具调用向境外服务器 POST <code>{plugin_id, device_id}</code>（<code>device_id = sha256(hostname|platform|arch)</code> 前 16 位）。README 已披露、开关可关，但「默认开」本身是隐私立场选择，建议上架页再次明示。</li>
+        <li><strong>指纹碰撞风险</strong>：3 字段指纹在同一主机名多用户场景（公用电脑、镜像克隆）会共用一本账——A 的用量会抬升 B 的计数（合并逻辑双向）。</li>
+        <li><strong>day 口径差</strong>：接收端按 UTC+8 自然日切，插件按机器本地时区切；海外用户会出现归并窗口错位（国内用户无感）。</li>
+        <li><strong>limit 口径差</strong>：接收端固定 10；插件可被 <code>DSH_FREE_DAILY_LIMIT</code> 覆盖，用户本地设 20 时接收端最多计到 10 ⇒ 计数低报。</li>
+      </ol>
+
+      <h2 id="section-3">三、对完整版（dsh-motor-ai）的影响</h2>
+      <p><strong>结论：当前零影响，且零风险。</strong>完整版未预填接收端地址，默认回落 <code>127.0.0.1:5000</code>（连接被拒即 fail-open 旁路忽略）；其放行决策本就是 100% 本地，遥测端点也无接线。也就是说，B 方案目前是<strong>免费插件专属</strong>的基础设施。</p>
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:24%">检查项</th><th style="width:76%">状态</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>默认行为</td><td>未预填地址 ⇒ 回落本地空端口，功能无感（full 放行决策 100% 本地）</td></tr>
+          <tr><td>遥测端点</td><td>无接线，接收端两个端点对 full 完全闲置</td></tr>
+          <tr><td>激活 / License</td><td>不经过接收端，无耦合</td></tr>
+          <tr><td>潜在风险</td><td>无；唯一「影响」是 full 用户若自行配置该地址可同样获得跨机归并，但目前无文档引导</td></tr>
+        </tbody>
+      </table>
+      <div data-component="callout" data-variant="info"><div class="callout-content">
+        <p>&nbsp;&nbsp;完整版要享用接收端能力，只需随下次 full 发版在 <code>cordis.patch.yml</code> 预填 <code>commerceBackendUrl</code>（对齐 l0 的一行改动），无需改任何闸门逻辑。</p>
+      </div></div>
+
+      <h2 id="section-4">四、风险与诚实边界（接收端侧）</h2>
+      <p>接收端按「统计信道」标准设计，以下风险均已评估并留下缓解措施；对插件功能均不构成阻塞。</p>
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:20%">风险</th><th style="width:10%">等级</th><th style="width:70%">现状与缓解</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>端点无鉴权</td><td class="c">🟡 中</td><td>任何人可打；按「统计信道」设计（append-only + 8KB~512KB 体积上限 + 每 IP 每分钟 120 次 best-effort 限流）。内嵌 key 可被 <code>npm pack</code> 读走，故不假装能防逆向</td></tr>
+          <tr><td>限流非权威</td><td class="c">🟡 中</td><td>isolate 内存计数，Deno Deploy 每 isolate 独立，非权威防线</td></tr>
+          <tr><td>平台依赖</td><td class="c">🟡 中</td><td>数据与可用性系于 Deno Deploy 免费档政策；好在插件侧失联即降级（不归并、照常放行），无单点故障</td></tr>
+          <tr><td>域名可达性</td><td class="c">🟢 低</td><td><code>*.deno.net</code> 本机直连实测 200 / 1.3s（IP 69.67.170.170 未污染）；GFW 策略若变，影响仅止于归并不止于功能</td></tr>
+          <tr><td>软限制</td><td class="c">🟢 低</td><td>删 <code>free-quota.json</code> 即清零——免费档合理定位，商业版走激活码硬闸（0.5.0 docstring 已自承）</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="section-5">五、后续改进建议（按优先级）</h2>
+      <p>七项建议按「先堵高危缺口、再对齐口径、后做运营与商业化延伸」排序；前三项建议随下一个 l0 / full 版本落地。</p>
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:6%">#</th><th style="width:10%">优先级</th><th style="width:44%">建议</th><th style="width:12%">成本</th><th style="width:28%">收益</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="c">1</td><td class="c">P0</td><td>修 P0-门1：<code>runL0Pipeline</code>（<code>pipeline.mjs:70</code>）及子工具纯函数出口注入 <code>assertFreeQuota('pipeline', config)</code>，共用 config + 一次性消费标记防重扣</td><td class="c">小（&lt;20 行）</td><td>堵住脚本 / CI 直调零限制的唯一高危缺口</td></tr>
+          <tr><td class="c">2</td><td class="c">P1</td><td>full 版预填 <code>commerceBackendUrl</code>（对齐 l0），让完整版免费档也获得跨机归并</td><td class="c">小（一行 + 发版）</td><td>两侧计数一本账</td></tr>
+          <tr><td class="c">3</td><td class="c">P1</td><td>口径统一：free-call 入参增加 <code>day</code> 字段，接收端以插件上报的 day 为 KV 键；limit 改由插件上报或请求携带</td><td class="c">中（契约双升）</td><td>消除时区 / 限额低报偏差</td></tr>
+          <tr><td class="c">4</td><td class="c">P2</td><td>给接收端加只读聚合端点 <code>GET /api/dsh/stats</code>（设备数 / 调用量），替代手工查 KV</td><td class="c">小</td><td>运营可观测</td></tr>
+          <tr><td class="c">5</td><td class="c">P2</td><td>隐私立场复核：默认外发是否需要改为「首次运行明示」</td><td class="c">小（文档 / 配置）</td><td>合规稳健</td></tr>
+          <tr><td class="c">6</td><td class="c">P2</td><td>telemetry / experience 端点：要么接线（full 侧补 POST），要么在 README 标注「预留未启用」</td><td class="c">小</td><td>消除死端点歧义</td></tr>
+          <tr><td class="c">7</td><td class="c">P3</td><td>长期：把接收端演进为商业后端（激活校验 / 支付回调）复用同架构；CF Worker 版保留为境外备胎（契约已逐字一致）</td><td class="c">大</td><td>商业化基础设施</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="section-6">六、结论</h2>
+      <p>B 方案走通的实质收益是<strong>「官方第一次能看见免费插件的真实使用」</strong>，且以零延迟代价、零功能风险的方式取得。免费插件的限流能力在 0.5.0 已本地闭环——这是比接收端更重要的修复；接收端补上的是归并与能见度。完整版尚未接入，建议随下次 full 发版预填地址对齐。唯一仍悬而未决的高危项是 <strong>P0-门1（纯函数脱闸）</strong>，建议在下一个 l0 版本中修复。</p>
+      <div data-component="callout" data-variant="success"><div class="callout-content">
+        <p>&nbsp;&nbsp;<strong>验收状态</strong>：接收端线上四端点冒烟通过；本地探针 <code>quota_probe_0.5.0.mjs</code> 13/13 全绿；l0 0.5.0 已发 npm latest 并完成镜像同步（无漂移）。</p>
+      </div></div>
+
+      <div class="appendix">
+        <p><strong>元信息</strong>：目标读者——中高级 Node.js / 插件生态开发者（DSH 插件维护者）；前置知识——DSH 插件机制、免费 / 完整双包架构、Deno Deploy 2 基础。</p>
+        <p>技术栈版本：dsh-motor-ai-l0@0.5.0（npm latest）/ dsh-motor-ai（full，rc 线）/ Deno Deploy 2（@deno/deploy 0.0.9908）/ Deno 2.9.6 / Node 24.19.0。</p>
+        <p>实测基线：<code>scripts/quota_probe_0.5.0.mjs</code> 13/13 全绿；线上闸门 10+2 拒；直连 200 / 1.3s。</p>
+      </div>
+    </main>
+  </section>
+</body>
+</html>
