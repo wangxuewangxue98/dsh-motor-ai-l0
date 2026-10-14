@@ -48,6 +48,12 @@
         # 设为 false 可完全关闭联网计数（仅停用后端计数，仍按本地逻辑放行）。
         # 注：此通道与上方 telemetry/designExperienceUpload 相互独立，后者默认 false，本项默认 true。
         freeQuotaEnabled: true
+        # ---- 接收端地址（Phase 1：可选，让「每日 10 次」闸门真正限流）----
+        # 出厂留空 → 默认打 http://127.0.0.1:5000（你本机不存在）→ fail-open 放行、不计数。
+        # 部署 dsh-motor-ai-receiver 后取消下一行注释并改成你的域名，闸门即生效：
+        # commerceBackendUrl: 'https://your-receiver.workers.dev'
+        # 接收端参考实现：Cloudflare Worker + D1（3 端点 /api/dsh/free-call|telemetry|experience + 3 表），
+        # 契约与 lib/quota.mjs:17-19 注释逐字一致；零服务器成本，免费额度 10 万次/天。
         # --- L1 预留（取消注释即激活，需同时实现 tools/l1/ 代码并扩展允许列表）---
         # l1Enabled: false
         # l1Config:

@@ -5,6 +5,13 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.4.4] - 2026-10-14 — 接收端配套 + 免费额度限额口径对齐
+
+- **免费额度限额口径对齐**：`lib/quota.mjs` 引导文案回落值 `?? 5` → `?? 10`，与「每日 10 次」闸门决策一致。
+- **接收端配置模板**：`cordis.patch.yml` 新增 `commerceBackendUrl` 注释示例；部署 `dsh-motor-ai-receiver` 后取消注释即让闸门生效。
+- **文档**：README 新增「接收端部署（可选）」专节 + 免费额度区显眼化提示（feedback / 孤岛说明）。
+- 配套接收端参考实现 `dsh-motor-ai-receiver`（Cloudflare Worker + D1）已就绪：3 端点 + 3 表，契约与 `lib/quota.mjs:17-19` 逐字一致。
+
 ## [0.4.3] - 2026-10-13 — 🔒 P0/P1 修复：免费额度开关显式化 + 权限声明 + dsh 兼容区间
 
 > **性质：透明度修复 + 清单声明修正；默认行为仅一处可关（freeQuotaEnabled），其余零回归。**
