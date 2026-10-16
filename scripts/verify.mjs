@@ -43,6 +43,13 @@ import {
   RULE_CATALOG, validateDesign, validateDesignBatch,
   toothFluxDensity, yokeFluxDensity, airGapFluxActual,
 } from '@wangxue98/dsh-motor-ai-core'
+// 2026-10-17 P0 改码：磁密口径 / V08 严重档 / 工程槽满率 / 电流 pf-η 分档
+import {
+  estimateCopperLoss, SLOT_FILL_MAX, SLOT_FILL_WARN,
+  B_YOKE_WARN_T, B_YOKE_SEVERE_T, B_YOKE_SAT_T,
+  SLOT_LINER_T_MM, SLOT_WEDGE_T_MM, SLOT_SHAPE_FILL, WIRE_COPPER_RATIO,
+  PF_ETA_BY_POWER, queryPfEtaRef,
+} from '@wangxue98/dsh-motor-ai-core'
 import {
   assessApplicability, scenarioFromMatrix, APPLICABILITY,
 } from '@wangxue98/dsh-motor-ai-core'
@@ -1096,17 +1103,34 @@ check('门禁: v0.2.5 P0 轭厚按磁密反解 ⇒ 200kW/2极不再全批轭饱�
   // 只要放大轭厚（并相应放大 OD）By 必然下降。旧实现之所以全批饱和，
   // 是因为 yokeThickness() 恒给 half×0.40、与磁密无关（改进方案 P0 的根因）。
   // 现在轭厚按 By≤B_YOKE_WARN_T 反解生成，V08 判据本身未变（仍是 >1.9T 判 failed）。
+  // P0-1 订正（2026-10-17）：本用例原断言「P0 后不应再有轭饱和行（satCount===0）」，
+  // 但 native yoke_sat 当时按**设计意图口径**（By 恒 1.5T）判定，而门禁 V08 按
+  // **实际整数匝口径**判定 —— 两条路径两套口径，于是同一行出现「表格正常、门禁爆」。
+  // P0-1 后 native 改走实际口径，satCount 由 0 变 3 不是回退，而是把此前被意图口径
+  // 掩盖的饱和行暴露出来（这些行整匝量化把实际磁通推高 48%，物理上确已饱和）。
+  // 故断言改为：① 意图口径下 By 仍 ≤1.9（v0.2.5 轭厚反解效果未回退）
+  //           ② 实际口径判饱和的行，门禁 V08 必须同步判 failed（同口径运行时证据）
+  const byIntentMax = Math.max(...est.results.map((r) => r.yoke_flux_density))
+  must(byIntentMax <= 1.9, `意图口径轭磁密应全部 ≤1.9T（v0.2.5 轭厚反解效果未回退），实际最大 ${byIntentMax}`)
   const satCount = est.results.filter((r) => r.yoke_sat === true).length
-  must(satCount === 0, `P0 后不应再有轭饱和行，实际 ${satCount}/${est.results.length}`)
+  for (const r of est.results) {
+    const g = validateDesign({ ...r.params, turns_per_coil: r.turns_per_coil, peak_current: r.peak_current },
+      { insulationClass: 'F' })
+    const v08fail = (g.issues ?? []).some((i) => i.rule === 'V08' && i.level === 'failed')
+    must(v08fail === (r.yoke_sat === true),
+      `主指标 yoke_sat(${r.yoke_sat} By_actual=${r.yoke_flux_density_actual}T) 与门禁 V08(${v08fail}) 必须同口径一致`)
+    must(Math.abs((g.metrics?.flux?.yoke_t ?? r.yoke_flux_density_actual) - r.yoke_flux_density_actual) < 0.02,
+      `门禁轭磁密与 native 实际口径轭磁密必须一致（实际 ${g.metrics?.flux?.yoke_t} vs ${r.yoke_flux_density_actual}）`)
+  }
   must(est.feasible_count > 0, `P0 后应产出可行方案，实际 ${est.feasible_count}`)
   // 反向守卫：V08 判据未被放宽 —— 手填一个薄轭行必须仍被判 failed
   const thin = { ...m.matrix[0], yoke_thickness: 3, _physics: { ...m.matrix[0]._physics } }
   const thinRep = validateDesignBatch([thin], { insulationClass: 'F' })
   const thinV08 = (thinRep.reports?.[0]?.issues ?? []).some((i) => i.rule === 'V08' && i.level === 'failed')
   must(thinV08, '手填薄轭（yoke=3mm）必须仍被 V08 判 failed（判据不得因 P0 而放宽）')
-  const maxBy = Math.max(...est.results.map((r) => r.yoke_flux_density))
-  must(maxBy <= 1.9, `轭磁密应全部 ≤1.9T，实际最大 ${maxBy}`)
-  return `feasible=${est.feasible_count} | 轭饱和行=${satCount} | By_max=${maxBy}T | 薄轭手填仍被 V08 拦截`
+  const maxByActual = Math.max(...est.results.map((r) => r.yoke_flux_density_actual ?? r.yoke_flux_density))
+  return `feasible=${est.feasible_count} | 意图口径 By_max=${byIntentMax}T | 实际口径 By_max=${maxByActual}T`
+    + ` | 实际口径饱和行=${satCount}（主指标/门禁 10/10 同口径一致）| 薄轭手填仍被 V08 拦截`
 })
 
 check('门禁: V17 理想匝数<1 判圆线整匝绕组无解（并给出可执行出路）', () => {
@@ -1473,11 +1497,21 @@ check('P2: 蒙特卡洛效率置信区间（MC/CI 水位线）', () => {
   must(top0.mc && top0.mc.available === true, 'Top1 应附可用 mc 统计')
   const [lo, hi] = top0.mc.efficiency_ci
   must(lo <= top0.mc.efficiency_mean && top0.mc.efficiency_mean <= hi, `CI 必须包住均值: [${lo}, ${hi}] 含 ${top0.mc.efficiency_mean}`)
-  must(lo <= top0.efficiency && top0.efficiency <= hi + 0.001, '点估计应落在 CI 附近（误差带内）')
+  // P0-4 订正（2026-10-17）：原断言「点估计落在均值的 95% CI 内」在统计上本就不成立。
+  //   mc.efficiency_ci 是**样本均值**的置信区间，半宽 = z·SE ∝ 1/√n（n=80 时仅 ±0.01pt）；
+  //   而点估计与均值之间有 Jensen 缺口（效率对扰动是凹函数，E[f(x)] < f(E[x])）≈0.02~0.03pt。
+  //   旧口径下缺口凑巧 <0.011pt 才一直绿；P0-4 上修电流后缺口略增即翻红 —— 是断言站不住，
+  //   不是 P0-4 引入了错误。改为有物理意义的不变式：
+  //   点估计必须落在 MC 扰动样本的**实际取值区间**内（被扰动带包住，实测展开宽度 0.10~0.19pp）。
+  const spread = top0.mc.efficiency_spread_pp
+  must(Math.abs(top0.efficiency - top0.mc.efficiency_mean) <= Math.max(spread, 0.05) + 1e-9,
+    `点估计应落在 MC 扰动带内：|点估计 ${top0.efficiency} − 均值 ${top0.mc.efficiency_mean}| `
+    + `= ${Math.abs(top0.efficiency - top0.mc.efficiency_mean).toFixed(3)}pp 应 ≤ 展开宽度 ${spread}pp`)
   // 默认 mc_samples=0 不应产生 mc 字段、不应有性能/回退副作用
   const off = runL0Estimate({ params_list: m.matrix, top_n: 5 })
   must(off.mc_enabled !== true && off.results[0].mc === undefined, 'mc_samples=0 不应启用 MC、无 mc 字段')
-  return `MC 开启后 TopN 附效率 CI 水位线（N=80, 0.95），区间包住均值；默认关闭零副作用`
+  return `MC 开启后 TopN 附效率 CI 水位线（N=80, 0.95），区间包住均值；`
+    + `点估计落扰动带内（|Δ|=${Math.abs(top0.efficiency - top0.mc.efficiency_mean).toFixed(3)}pp ≤ ${spread}pp）；默认关闭零副作用`
 })
 
 check('绝缘等级: params.insulation_class 透传到温升判据（B 级 80K 生效）', () => {
@@ -2351,6 +2385,152 @@ check('v0.5.5 P2-3 杠杆知识库：查询 + 注入 + 多杠杆异值（防合�
   must(labs.every((x) => typeof x === 'string' && x.length > 0), 'KB 查询存在空 label')
   must(new Set(labs).size === labs.length, '各杠杆 label 必须互异（同值=KB 被错误合并，假绿灯）')
   return 'KB 全表/单查/注入 + 多杠杆异值防线 全部符合'
+})
+
+// ═══════════════════════════════════════════════════════════════════
+// 2026-10-17 P0 四项改码门禁（每项含反向 toggle 证零回归）
+// ═══════════════════════════════════════════════════════════════════
+
+/** env 临时置值 → 执行 → 恢复（保证反向验证不污染后续用例） */
+function withEnv(key, val, fn) {
+  const old = process.env[key]
+  if (val === undefined) delete process.env[key]
+  else process.env[key] = String(val)
+  try { return fn() } finally {
+    if (old === undefined) delete process.env[key]
+    else process.env[key] = old
+  }
+}
+
+const Y160_BASE = {
+  stator_od: 260, stator_id: 170, rotor_od: 168.98, shaft_dia: 60,
+  core_length: 195, air_gap: 0.51, tooth_width: 7.25, yoke_thickness: 18,
+  poles: 4, voltage: 380, speed: 1460, slots_stator: 36, slots_rotor: 28,
+  parallel_circuits: 1, cooling: 'forced_air', motor_type: 'induction', power_kw: 15,
+}
+
+check('P0-1 磁密口径统一：native 实际口径轭磁密 == 门禁 V08 判定值（含 intent 反向验证）', () => {
+  const est = quickL0Estimate(Y160_BASE, {})
+  must(est.bg_caliber === 'actual', `默认口径应为 actual，实际 ${est.bg_caliber}`)
+  must(typeof est.yoke_flux_density_actual === 'number', '必须输出实际口径轭磁密')
+  must(est.yoke_flux_density_actual !== est.yoke_flux_density,
+    `实际口径(${est.yoke_flux_density_actual}T) 与意图口径(${est.yoke_flux_density}T) 必须不同`
+    + `（同值=口径没切换，假绿灯）`)
+  // 与门禁同口径：门禁 V08 用的 yoke_t 必须与 native 实际口径值一致
+  const g = validateDesign({ ...Y160_BASE, turns_per_coil: est.turns_per_coil, peak_current: est.peak_current })
+  must(Math.abs((g.metrics?.flux?.yoke_t ?? NaN) - est.yoke_flux_density_actual) < 0.02,
+    `门禁轭密 ${g.metrics?.flux?.yoke_t}T 应等于 native 实际口径 ${est.yoke_flux_density_actual}T`)
+  // 反向破坏验证：口径切回 intent 时，实际口径字段必须回落到意图口径值
+  const off = withEnv('DSH_L0_BG_CALIBER', 'intent', () => quickL0Estimate(Y160_BASE, {}))
+  must(off.bg_caliber === 'intent', `intent 开关应生效，实际 ${off.bg_caliber}`)
+  must(off.yoke_flux_density_actual === off.yoke_flux_density,
+    `intent 口径下实际口径值应回落为意图值（${off.yoke_flux_density_actual} vs ${off.yoke_flux_density}）`)
+  return `native By_actual=${est.yoke_flux_density_actual}T == 门禁 ${g.metrics?.flux?.yoke_t}T；`
+    + `意图口径 By=${est.yoke_flux_density}T；env=intent 回落正常`
+})
+
+check('P0-2 V08 补 1.7T 严重档：>1.7 打 severe、>1.9 仍 failed、≤1.7 不打 severe', () => {
+  // 锁意图口径（bgCaliber:'intent'）⇒ By = 0.8·Dsi/(p·yoke·k_stack) = 34.69/yoke，可用轭厚精确调档
+  const Dsi = 170, p = 4, kStack = STACKING_FACTOR
+  const yokeFor = (by) => (0.8 * Dsi) / (p * by * kStack)
+  const at = (by) => {
+    const r = validateDesign({ ...Y160_BASE, yoke_thickness: yokeFor(by), turns_per_coil: 7, peak_current: 37 },
+      { bgCaliber: 'intent' })
+    const v08 = (r.issues ?? []).find((i) => i.rule === 'V08')
+    return { by: r.metrics?.flux?.yoke_t, level: v08?.level ?? null, severity: v08?.severity ?? null }
+  }
+  const severe = at(1.8)
+  must(Math.abs(severe.by - 1.8) < 0.02, `构造 By 应≈1.8T，实际 ${severe.by}`)
+  must(severe.level === 'warning', `By=1.8T 应为 warning，实际 ${severe.level}`)
+  must(severe.severity === 'severe', `By=1.8T 必须打 severity='severe'，实际 ${severe.severity}`)
+  const sat = at(2.0)
+  must(sat.level === 'failed', `By=2.0T 必须仍 failed（判据不得放宽），实际 ${sat.level}`)
+  const warn = at(1.6)
+  must(warn.level === 'warning' && warn.severity === null,
+    `By=1.6T 应仅普通 warning 不打 severe，实际 level=${warn.level} severity=${warn.severity}`)
+  return `1.8T→warning+severe | 2.0T→failed（未放宽）| 1.6T→warning 无 severe；`
+    + `档值 B_YOKE_SEVERE_T=${B_YOKE_SEVERE_T}T（warn ${B_YOKE_WARN_T} / sat ${B_YOKE_SAT_T}）`
+})
+
+check('P0-3 槽满率工程口径：V15 判工程口径 + 旧口径回显（含 env=0 反向验证）', () => {
+  const row = { ...Y160_BASE, turns_per_coil: 8, peak_current: 37 }
+  const g = validateDesign(row)
+  const sf = g.metrics?.slot_fill
+  must(sf && sf.caliber === 'engineering', `V15 应判工程口径，实际 ${sf?.caliber}`)
+  must(typeof sf.ratio_net === 'number' && sf.ratio_net < sf.ratio,
+    `旧口径 ratio_net(${sf?.ratio_net}) 必须回显且小于工程口径(${sf?.ratio})`)
+  must(typeof sf.area_net_mm2 === 'number' && sf.area_net_mm2 < sf.area_mm2,
+    `槽有效面积(${sf?.area_net_mm2}) 必须小于毛槽面积(${sf?.area_mm2})`)
+  // 手工复核换算链：工程口径 = 裸铜/铜占比 ÷ [(槽宽−2×绝缘)×(槽深−绝缘−槽楔)×形状系数]
+  const cu = estimateCopperLoss({
+    statorOd: row.stator_od, statorId: row.stator_id, coreLength: row.core_length,
+    slotsStator: row.slots_stator, poles: row.poles, peakCurrent: row.peak_current,
+    turnsPerCoil: row.turns_per_coil, parallelCircuits: row.parallel_circuits, airGap: row.air_gap,
+  })
+  must(Math.abs(cu.slot_fill_engineering - sf.ratio) < 0.02,
+    `门禁 ratio(${sf?.ratio}) 应与 estimateCopperLoss 工程口径(${cu.slot_fill_engineering}) 一致`)
+  // 反向破坏验证：env=0 时判定必须回退旧净/毛口径
+  const off = withEnv('DSH_L0_ENG_SLOT_FILL', '0', () => validateDesign(row))
+  must(off.metrics?.slot_fill?.caliber === 'net_over_gross',
+    `env=0 应回退 net_over_gross，实际 ${off.metrics?.slot_fill?.caliber}`)
+  must(Math.abs(off.metrics?.slot_fill?.ratio - cu.slot_fill_ratio) < 0.02,
+    `env=0 判定值应等于旧净/毛口径 ${cu.slot_fill_ratio}，实际 ${off.metrics?.slot_fill?.ratio}`)
+  // ---- opts 通道（与 env 通道并列，缺一不可）----
+  // 教训：core 侧曾把 engSlotFillOn() 写成无参调用 ⇒ opts.engSlotFill 被静默丢弃，
+  // 而本门禁只断言了 env 通道 ⇒ 缺陷漏网（靠 tarball 自检才暴露）。
+  // 故两条通道必须都断言，且断言的是「判定口径」而非仅新字段是否存在。
+  const optOff = validateDesign(row, { engSlotFill: false })
+  must(optOff.metrics?.slot_fill?.caliber === 'net_over_gross',
+    `opts.engSlotFill=false 应回退旧口径，实际 ${optOff.metrics?.slot_fill?.caliber}`)
+  must(Math.abs(optOff.metrics?.slot_fill?.ratio - cu.slot_fill_ratio) < 0.02,
+    `opts=false 判定值应等于旧净/毛口径 ${cu.slot_fill_ratio}，实际 ${optOff.metrics?.slot_fill?.ratio}`)
+  const optOn = validateDesign(row, { engSlotFill: true })
+  must(optOn.metrics?.slot_fill?.caliber === 'engineering',
+    `opts.engSlotFill=true 应判工程口径，实际 ${optOn.metrics?.slot_fill?.caliber}`)
+  const cuOptOff = estimateCopperLoss({
+    statorOd: row.stator_od, statorId: row.stator_id, coreLength: row.core_length,
+    slotsStator: row.slots_stator, poles: row.poles, peakCurrent: row.peak_current,
+    turnsPerCoil: row.turns_per_coil, parallelCircuits: row.parallel_circuits, airGap: row.air_gap,
+    opts: { engSlotFill: false },
+  })
+  must(cuOptOff.slot_fill_caliber === 'net_over_gross',
+    `estimateCopperLoss 的 opts 通道应生效，实际 ${cuOptOff.slot_fill_caliber}`)
+  // 主指标侧同样必须透传 opts（否则 native 与门禁口径再次分裂）
+  const estOff = quickL0Estimate(row, { engSlotFill: false })
+  must(estOff.slot_fill_caliber === 'net_over_gross',
+    `quickL0Estimate 的 opts 通道应生效，实际 ${estOff.slot_fill_caliber}`)
+  return `工程=${sf.ratio} 旧净/毛=${sf.ratio_net}（放大 ${(sf.ratio / sf.ratio_net).toFixed(2)}×）；`
+    + `槽有效 ${sf.area_net_mm2}mm²/毛 ${sf.area_mm2}mm²；env=0 与 opts 双通道回退均正常`
+})
+
+check('P0-4 电流 pf/η 分档：铭牌反算校验 + PMSM 不污染 + 输入覆盖（含 env=0 反向验证）', () => {
+  // ① 铭牌锚点：Y160L-4 15kW 铭牌 30.3A ⇐ 15000/(√3·380·pf·η)
+  const est = quickL0Estimate({ ...Y160_BASE, power_kw: 15 }, {})
+  must(est.pf_eta_source === 'nameplate', `15kW 应命中铭牌档，实际 ${est.pf_eta_source}`)
+  const iRms = est.peak_current / Math.SQRT2
+  const nameplate = 15000 / (Math.sqrt(3) * 380 * 0.85 * 0.885)
+  must(Math.abs(iRms - nameplate) < 0.2,
+    `15kW 线电流应≈铭牌 ${nameplate.toFixed(1)}A，实际 ${iRms.toFixed(1)}A`)
+  // ② 旧行为实测偏低：env=0 时电流应显著小于分档后
+  const off = withEnv('DSH_L0_PF_ETA_BINS', '0', () => quickL0Estimate({ ...Y160_BASE, power_kw: 15 }, {}))
+  must(off.peak_current < est.peak_current,
+    `旧口径电流应偏低：旧 ${off.peak_current}A < 新 ${est.peak_current}A`)
+  // ③ PMSM 不得被异步机典型值污染
+  const pmsm = quickL0Estimate({ ...Y160_BASE, motor_type: 'pmsm' }, {})
+  must(pmsm.pf_eta_source === 'constant', `PMSM 应走常量兜底，实际 ${pmsm.pf_eta_source}`)
+  must(pmsm.power_factor === 0.92, `PMSM pf 应保持 0.92，实际 ${pmsm.power_factor}`)
+  // ④ 显式输入优先
+  const overridden = quickL0Estimate({ ...Y160_BASE, power_kw: 15, power_factor: 0.80 }, {})
+  must(overridden.pf_eta_source === 'input', `显式 pf 应标 input，实际 ${overridden.pf_eta_source}`)
+  must(overridden.power_factor === 0.80, `显式 pf 应生效，实际 ${overridden.power_factor}`)
+  // ⑤ 分档表单调性（防档位被写成乱序/合并）
+  const pfs = PF_ETA_BY_POWER.map((b) => b.pf)
+  const etas = PF_ETA_BY_POWER.map((b) => b.eta)
+  must(pfs.every((v, i) => i === 0 || v >= pfs[i - 1]), `pf 必须随功率单调不减，实际 ${pfs}`)
+  must(etas.every((v, i) => i === 0 || v >= etas[i - 1]), `η 必须随功率单调不减，实际 ${etas}`)
+  must(new Set(pfs).size === pfs.length, '各档 pf 必须互异（同值=档位被错误合并，假绿灯）')
+  return `15kW 线电流 ${iRms.toFixed(1)}A ≈ 铭牌 30.3A（旧 ${(off.peak_current / Math.SQRT2).toFixed(1)}A）；`
+    + `PMSM 保持 0.92；显式覆盖生效；分档单调互异 ${pfs.join('/')}`
 })
 
 // ---------- 输出 ----------

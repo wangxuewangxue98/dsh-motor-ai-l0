@@ -5,6 +5,40 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [Unreleased] — P0 四项配套（依赖 core [Unreleased] P0）+ l0/lib 陈旧副本标注
+
+> **性质：工具层接线 + 门禁断言升级；规则引擎改动全在 core 侧。**
+> 依据《L0 插件程序深度分析与改进方案 v2》（2026-10-17）P0 四项与 P1-12。
+
+1. **P0-1 磁密口径**：`L0_NATIVE_FIELDS` 登记 core 新增的
+   `air_gap_flux_density_actual` / `tooth_flux_density_actual` / `yoke_flux_density_actual` /
+   `bg_caliber`（白名单在 core `lib/param-schema.mjs`，改 l0 侧同名文件不生效）。
+2. **P0-3 工程槽满率**：登记 `slot_fill_engineering` / `slot_fill_caliber` / `slot_area_net_mm2`。
+3. **P0-4 电流口径**：登记 `eta_ref_for_current` / `pf_eta_source`。
+4. **P1-12 l0/lib 陈旧副本标注**（用户选定「全保留 + 警示注释」）：对 11 个死代码/镜像文件
+   统一加头部注释，标注真源 `D:/dsh-motor-ai-core/lib/<同名>`、分类与现状
+   （逐字节相同 or 落后 N 行）。其中 7 个与 core 逐字节相同，4 个设计引擎副本落后
+   27~336 行。**额外发现的陷阱**：`scripts/calibrate_losses*.mjs --apply` 会把标定结果
+   写回 `l0/lib/motor-constants.mjs`（死文件），而脚本常量与运行时都读 core
+   ⇒ **标定写回实际不生效**，已在文件头标注。
+5. **门禁断言升级**（`scripts/verify.mjs`，129 → 133 项）：
+   - 「v0.2.5 P0 轭厚反解」用例改为**同口径一致性**断言：native `yoke_sat` 必须与门禁
+     V08 failed 完全一致（此前按意图口径断言 satCount===0，与门禁实际口径矛盾）；
+   - 蒙特卡洛用例的点估计判据由「落在均值 95% CI 内」改为「落在 MC 扰动带内」
+     （CI 是均值的置信区间，半宽 ∝1/√n，本就不该包住点估计——旧口径下凑巧通过）；
+   - 新增 P0-1/2/3/4 四项运行时门禁，每项含 env 反向 toggle 验证。
+6. **回归基线更新**（`benchmarks/baseline.json`，`--update-baseline` 显式重生成）：
+   P0-4 把线电流修正到铭牌真值后，损耗/温升随之上移，2 项超出回归容差
+   —— `y160m4.temp_rise 40.6→43.1K`（劣化 2.5K > 容差 2K）、
+   `y160m4.total_loss 1022.64→1084.68W`（劣化 6.07% > 容差 5%）。
+   **定性：不是缺陷，是向真值收敛的必然物理后果**（电流↑ ⇒ 线规↑ ⇒ 铜损↑ ⇒ 总损/温升↑、
+   效率↓）。15kW 线电流 26.4A → **30.3A = Y160L-4 铭牌值**，旧值系统性低 13~20%。
+   基线随之上移后门 B 恢复 OK，总判定仅剩门 A 的既有 DEBT（`small55kw` 效率越参考带，
+   P0 之前即存在）。旧基线备份于 `output/baseline_before_p0_20261017.json` 供复核。
+   ⚠️ 提醒：`COPPER_LOSS_K` **不需重标定**——`scripts/calibrate_losses_v3.mjs:53` 本来就用
+   RMxprt 真值 `stator_current` + 真值匝数拟合，本次修正生产侧电流是向真值收敛，
+   误重标定会造成二次纠偏。
+
 ## [0.5.5] - 2026-10-15 — P2：密度无关化声明 / 槽形族回显 / 杠杆知识库
 
 > **性质：能力新增（P2-1/2/3，与 core 1.3.1 配套发布）。规则引擎改动在 core 侧，l0 为工具层接线。**

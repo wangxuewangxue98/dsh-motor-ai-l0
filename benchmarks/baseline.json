@@ -2,41 +2,41 @@
   "schema": "l0-baseline/1",
   "metrics": {
     "y160m4": {
-      "efficiency": 93.15,
-      "temp_rise": 40.6,
-      "total_loss": 1022.6400000000001,
+      "efficiency": 92.79,
+      "temp_rise": 43.1,
+      "total_loss": 1084.6844,
       "torque": 98.12
     },
     "y200l4": {
-      "efficiency": 93.76,
-      "temp_rise": 47,
-      "total_loss": 1837.8888000000002,
+      "efficiency": 93.55,
+      "temp_rise": 48.8,
+      "total_loss": 1906.7686,
       "torque": 194.9
     },
     "hs200kw": {
       "efficiency": 96,
-      "temp_rise": 78.6,
-      "total_loss": 7610.0599,
+      "temp_rise": 79.1,
+      "total_loss": 7652.2237000000005,
       "torque": 86.82
     },
     "mine75kw": {
-      "efficiency": 94.42,
-      "temp_rise": 63.8,
-      "total_loss": 4041.3428999999996,
+      "efficiency": 94.27,
+      "temp_rise": 65.8,
+      "total_loss": 4164.5517,
       "torque": 483.95
     },
     "small55kw": {
-      "efficiency": 94.07,
-      "temp_rise": 29.3,
-      "total_loss": 346.4843,
+      "efficiency": 93.81,
+      "temp_rise": 30.7,
+      "total_loss": 362.7841,
       "torque": 18.11
     },
     "fan110kw": {
-      "efficiency": 94.2,
-      "temp_rise": 24.5,
-      "total_loss": 6768.6055,
+      "efficiency": 93.99,
+      "temp_rise": 25.4,
+      "total_loss": 7027.6116999999995,
       "torque": 350.17
     }
   },
-  "updated_at": "2026-10-08T11:06:29.916Z"
+  "updated_at": "2026-10-16T17:36:10.146Z"
 }
