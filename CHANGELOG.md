@@ -5,7 +5,7 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
-## [Unreleased] — P0 四项配套（依赖 core [Unreleased] P0）+ l0/lib 陈旧副本标注
+## [0.6.0] - 2026-10-17 — P0 四项配套（依赖 core 1.4.0）+ l0/lib 陈旧副本标注
 
 > **性质：工具层接线 + 门禁断言升级；规则引擎改动全在 core 侧。**
 > 依据《L0 插件程序深度分析与改进方案 v2》（2026-10-17）P0 四项与 P1-12。
