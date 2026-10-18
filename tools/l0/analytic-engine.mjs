@@ -22,7 +22,7 @@
  *   故解析结果恒标 analytic_calibrated:false + confidence:0.5（公式级），待 S0 标定后上调。
  */
 
-import { quickL0Estimate, estimateTempRise } from '@wangxue98/dsh-motor-ai-core'
+import { quickL0Estimate, estimateTempRise, B_YOKE_SAT_T } from '@wangxue98/dsh-motor-ai-core'
 
 // ───────────────────────────────────────────────────────────
 // A-⑥ env 开关（仿 formula-engine.mjs:46-48 范式）
@@ -103,14 +103,17 @@ export function doSaturationLoop(p, maxIter = 60) {
     statorId = 0, statorOd = 0, yokeThickness = 0, toothWidth = 0,
     airGap = 0, slotsStator = 0, poles = 4, coreLength = 0, muR0 = 2000,
   } = p
-  const pp = Math.max(1, Math.round(poles))
+  const pp = Math.max(1, Math.round(poles / 2)) // 极对数（poles/2），非极数；原 Math.round(poles) 把 4 极当 4 对极，轭面积被错除 2·pp
   const Di = statorId, L = coreLength, y = yokeThickness, Zs = slotsStator
   if (!(Di > 0) || !(L > 0) || !(Zs > 0)) {
     return { B_delta: B_delta_base, B_t: B_t_base, B_y: B_y_base, muR_t: muR0, muR_y: muR0, saturated: false, converged: false, iterations: 0, reason: '几何不足' }
   }
   const Ag = Math.PI * Di * L / (2 * pp)
   const At = (Zs / (2 * pp)) * toothWidth * L
-  const Ay = Math.PI * (Di + y) * y / (2 * pp)
+  // 轭部为整环铁；磁通在轭中平分（每侧 Φ/2），故 By=Φ/Ay（Ay 即整环截面积，
+  // 不再额外 /(2·pp)；原写法 Ay 又除 2·pp 导致轭面积被缩小 2·pp 倍 → 轭密被放大同倍）。
+  // 此面积模型与 formula-engine.mjs:584-585 的 toothBraw/yokeBraw 同口径（线性区收敛到基线）。
+  const Ay = Math.PI * (Di + y) * y
   const kC = carterFactor(toothWidth * 0.5, airGap, Math.PI * Di / Zs)
   const dEff = airGap * kC
   const lt = Math.max(1, (statorOd - Di) / 2 - y)
@@ -120,7 +123,7 @@ export function doSaturationLoop(p, maxIter = 60) {
   const Fapplied = (B_t_base / (MU0 * muR0)) * lt + (B_y_base / (MU0 * muR0)) * ly + (B_delta_base / MU0) * lg
   // 非线性磁势函数 F(Φ)
   const Fof = (Phi) => {
-    const Bg = Phi / Ag, Bt = Phi / At, By = Phi / (2 * Ay)
+    const Bg = Phi / Ag, Bt = Phi / At, By = Phi / Ay
     const Hg = Bg / MU0
     const Ht = HfromB(Bt), Hy = HfromB(By)
     return Ht * lt + Hy * ly + Hg * lg
@@ -138,7 +141,7 @@ export function doSaturationLoop(p, maxIter = 60) {
     if (Fmid < Fapplied) lo = mid; else hi = mid
   }
   if (!converged) PhiStar = (lo + hi) / 2
-  const Bg = PhiStar / Ag, Bt = PhiStar / At, By = PhiStar / (2 * Ay)
+  const Bg = PhiStar / Ag, Bt = PhiStar / At, By = PhiStar / Ay
   const muRt = muRFromB(Bt), muRy = muRFromB(By)
   return {
     B_delta: Math.round(Bg * 1000) / 1000,
@@ -146,7 +149,9 @@ export function doSaturationLoop(p, maxIter = 60) {
     B_y: Math.round(By * 1000) / 1000,
     muR_t: Math.round(muRt), muR_y: Math.round(muRy),
     mmf_applied: Math.round(Fapplied), mmf_solved: Math.round(Fof(PhiStar)),
-    saturated: (Bt > 1.8 || By > 1.7),
+    // 饱和判据对齐 V08 门禁：齿 >1.8T 或轭 ≥ B_YOKE_SAT_T(1.9T) 视为进入饱和区。
+    // 注：1.9T 为 codebase 轭失败阈值；正常轭密 1.5~1.8T 不标 saturated，避免旧 bug 时代的误报。
+    saturated: (Bt > 1.8 || By >= B_YOKE_SAT_T),
     converged, iterations: converged ? it + 1 : maxIter,
   }
 }

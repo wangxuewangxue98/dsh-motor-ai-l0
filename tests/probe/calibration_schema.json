@@ -1,0 +1,108 @@
+{
+  "generated_by": "calibrate_analytic_rmxprt.mjs",
+  "mode": "dry-run",
+  "note": "本 schema 描述 RMxprt 离线标定计划；真实标定需 ANSYS + RMxprt 授权（见 requiresAnsys 守卫）。",
+  "target_coefficients": {
+    "bh_curve": {
+      "consumed_by": "doSaturationLoop (tools/l0/analytic-engine.mjs)",
+      "current_default": "DW540-50 典型值（未标定）",
+      "extract_from": "RMxprt 硅钢牌号 B-H 表（按设计硅钢等级逐设计反算）",
+      "output_file": "lib/analytic-calib/bh_curve.json"
+    },
+    "carter_factor": {
+      "consumed_by": "carterFactor (tools/l0/analytic-engine.mjs)",
+      "current_default": "Howe 简化闭式（未标定）",
+      "extract_from": "RMxprt 开槽气隙磁导 vs 卡特解析解残差拟合",
+      "output_file": "lib/analytic-calib/carter.json"
+    },
+    "thermal_resistance": {
+      "consumed_by": "thermalCouplingLoop (tools/l0/analytic-engine.mjs)",
+      "current_default": "core estimateTempRise 单趟经验式",
+      "extract_from": "RMxprt 稳态热网络（绝缘/铁/壳导热 + 散热系数）反算",
+      "output_file": "lib/analytic-calib/thermal_rth.json"
+    }
+  },
+  "designs": [
+    {
+      "tag": "Y160L-4",
+      "power_kw": 15,
+      "poles": 4,
+      "voltage": 380,
+      "speed": 1460,
+      "cooling": "forced_air",
+      "stator_od": 260,
+      "stator_id": 170,
+      "core_length": 195,
+      "air_gap": 0.5,
+      "slots_stator": 36,
+      "turns_per_coil": 31,
+      "expected_rmxprt_artifacts": [
+        "FluxLinkage",
+        "LossSummary",
+        "ThermalMap"
+      ]
+    },
+    {
+      "tag": "Y160M-4",
+      "power_kw": 11,
+      "poles": 4,
+      "voltage": 380,
+      "speed": 1460,
+      "cooling": "forced_air",
+      "stator_od": 260,
+      "stator_id": 170,
+      "core_length": 155,
+      "air_gap": 0.5,
+      "slots_stator": 36,
+      "turns_per_coil": 41,
+      "expected_rmxprt_artifacts": [
+        "FluxLinkage",
+        "LossSummary",
+        "ThermalMap"
+      ]
+    },
+    {
+      "tag": "Y180M-4",
+      "power_kw": 18.5,
+      "poles": 4,
+      "voltage": 380,
+      "speed": 1460,
+      "cooling": "forced_air",
+      "stator_od": 290,
+      "stator_id": 187,
+      "core_length": 190,
+      "air_gap": 0.55,
+      "slots_stator": 48,
+      "turns_per_coil": 25,
+      "expected_rmxprt_artifacts": [
+        "FluxLinkage",
+        "LossSummary",
+        "ThermalMap"
+      ]
+    },
+    {
+      "tag": "Y200L-4",
+      "power_kw": 30,
+      "poles": 4,
+      "voltage": 380,
+      "speed": 1470,
+      "cooling": "forced_air",
+      "stator_od": 327,
+      "stator_id": 210,
+      "core_length": 230,
+      "air_gap": 0.65,
+      "slots_stator": 48,
+      "turns_per_coil": 16,
+      "expected_rmxprt_artifacts": [
+        "FluxLinkage",
+        "LossSummary",
+        "ThermalMap"
+      ]
+    }
+  ],
+  "validation": {
+    "metric": "MAE(efficiency) analytic vs RMxprt",
+    "gate": "<= 1.5pt 且回退率 < 1%",
+    "post_calibration_action": "将 analytic_calibrated 置 true、confidence 由 0.5 上调至 0.8（提案 A-⑦）"
+  }
+}

@@ -5,6 +5,20 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.6.3] - 2026-10-18 — 修复 analytic doSaturationLoop 轭磁密 P0 几何 Bug（按 RMxprt 真值口径对齐）
+
+> **性质：解析通道内部缺陷修复（仅改 tools/l0/analytic-engine.mjs 几何口径 + 自检加固）；默认 OFF 零回归，权威字段仍走公式基线。**
+> 修复依据：用插件自带解析法核算 Y160L/Y180M 时，轭磁密被算成 3.5T/2.5T（硅钢轭部物理不可能），定位为几何口径三重放大 bug。
+
+1. **P0 修复 `doSaturationLoop` 几何口径**（analytic-engine.mjs）：
+   - `pp = Math.round(poles) → Math.round(poles/2)`：极数误作极对数（4 极当 4 对极）。
+   - 轭面积 `Ay = π(Di+y)y/(2·pp) → π(Di+y)y`：去掉多余的 2·pp 除法（轭为整环铁，磁通在轭中平分已体现在 By=Φ/Ay）。
+   - `By = Φ/(2·Ay) → Φ/Ay`（两处：Fof 与输出）：轭密不再被二次除以 2。
+   - 饱和判据对齐 V08 门禁：`saturated: (Bt>1.8 || By>=B_YOKE_SAT_T=1.9)`，避免旧 1.7 阈值对正常 1.7~1.9T 轭密误报。
+2. **验证加固**：`verify_analytic_local.mjs` 实验附字段断言升级为「独立且物理有界(<2.2T)」，防 P0 bug 回潮；新增 `tests/probe/verify_analytic_fix.mjs` 反向破坏验证（修复后 By≈基线且<2.0T，改回旧写法必复现 >2.0T 物理不可能值）。
+3. **S0 标定 harness**：`calibrate_analytic_rmxprt.mjs --dry-run` 已产出 `lib/analytic-calib` 计划 schema；真实标定受 ANSYS/RMxprt 守卫拦截（沙箱无授权）。
+4. **实测效果**：Y160L 轭密 3.54T→1.93T（对齐公式基线）；Y180M 2.49T→1.23T（物理有界，残余偏差属未标定 B-H 模型缺口，待 S0）。
+
 ## [0.6.2] - 2026-10-18 — 解析迭代通道（analytic）+ C/S1 槽数覆盖 + 配额版本上报（依赖 core 1.4.1）
 
 > **性质：新增 opt-in 解析迭代通道（默认 OFF，零回归）+ 两个 additive 改动；规则引擎改动仍在 core 侧。**

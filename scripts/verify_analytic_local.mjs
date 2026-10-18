@@ -55,7 +55,8 @@ checks.push(['C/S1 默认slot不变', m3[0]?.slots_stator !== 48])
 // 权威字段不被未标定迭代值污染（预校准期安全边界）
 checks.push(['权威 temp_rise 未被覆盖', rForm.results[0]?.temp_rise === rOn.results[0]?.temp_rise])
 checks.push(['权威 yoke 磁密未被覆盖', rForm.results[0]?.yoke_flux_density === rOn.results[0]?.yoke_flux_density])
-checks.push(['实验附字段独立存在', typeof top?.yoke_flux_density_analytic === 'number' && top?.yoke_flux_density_analytic !== top?.yoke_flux_density])
+// 实验附字段独立存在且物理有界（加固：防止 P0 轭密放大 bug 回潮——旧 bug 曾输出 3.5T）
+checks.push(['实验附字段独立且物理有界', typeof top?.yoke_flux_density_analytic === 'number' && top?.yoke_flux_density_analytic !== top?.yoke_flux_density && top?.yoke_flux_density_analytic > 0 && top?.yoke_flux_density_analytic < 2.2])
 let ok = true
 console.log('\n=== 断言 ===')
 for (const [name, pass] of checks) {
