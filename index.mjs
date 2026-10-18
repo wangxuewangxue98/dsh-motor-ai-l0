@@ -12,7 +12,7 @@
  *
  * @typedef {object} Config
  * @property {'l0'|'l1'|'l2'} level          层级总闸，当前唯一有效值 'l0'
- * @property {'formula'|'surrogate'|'auto'} l0Mode
+ * @property {'formula'|'surrogate'|'analytic'|'auto'} l0Mode
  * @property {string} surrogatePath          代理模型权重路径
  * @property {number} surrogateConfidenceThreshold  置信度低于此值降级到公式
  * @property {number} maxMatrixSize          参数矩阵最大组合数
@@ -60,8 +60,8 @@ export const Config = Schema.object({
     .description('求解层级总闸：l0 经验公式 / l1 RMxprt 磁路法(预留) / l2 Motor-CAD 精验(预留)'),
 
   // ---- L0 运行参数 ----
-  l0Mode: Schema.union(['formula', 'surrogate', 'auto']).default('auto')
-    .description('L0 估算模式：formula 纯公式 / surrogate 代理模型 / auto 自动降级'),
+  l0Mode: Schema.union(['formula', 'surrogate', 'analytic', 'auto']).default('formula')
+    .description('L0 估算模式：formula 纯公式 / surrogate 代理模型 / analytic 解析迭代通道(默认 off，需 DSH_L0_ANALYTIC 启用) / auto 自动降级(=公式)'),
   surrogatePath: Schema.string().default('models/l0_surrogate_family.json')
     .description('代理模型权重文件路径'),
   surrogateConfidenceThreshold: Schema.number().default(0.4)

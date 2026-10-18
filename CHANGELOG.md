@@ -5,6 +5,23 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.6.2] - 2026-10-18 — 解析迭代通道（analytic）+ C/S1 槽数覆盖 + 配额版本上报（依赖 core 1.4.1）
+
+> **性质：新增 opt-in 解析迭代通道（默认 OFF，零回归）+ 两个 additive 改动；规则引擎改动仍在 core 侧。**
+> 解析通道设计依据《在插件增加解析法通道_实施提案_v2》。
+
+1. **A 方案第三支路：analytic 解析迭代通道**（默认 OFF，需 `l0Mode='analytic'` + `DSH_L0_ANALYTIC` 门控）：
+   - `tools/l0/analytic-engine.mjs`（新增）：`doSaturationLoop`（磁路饱和固定点迭代，B-H 查表 + Carter 系数 + μr(B) 非线性反馈）与 `thermalCouplingLoop`（热-电耦合固定点迭代，铜阻温度回代，收敛判据 |ΔT|<1K）；
+     设计边界＝**方案参数（匝数/线规/气隙/槽形/铁长）冻结、仅方程求解迭代**，迭代绝不改设计输入重算。
+   - `l0-estimate.mjs` 增加 analytic 第三支路，复用公式通道**永久回退保底**（零回归）；`exclusive` 模式不收敛标 infeasible 仍走公式输出。
+   - env 四档：`off`(骨架) / `shadow`(公式主出+并行记偏差) / `on`(迭代生效) / `exclusive`(仅解析)。
+   - **未标定**：B-H/热阻用典型值，输出 `analytic_calibrated:false, confidence:0.5`；权威字段（效率/温升/磁密）**未被覆盖**，仅挂 `*_analytic` 实验附字段；待 `scripts/calibrate_analytic_rmxprt.mjs`（S0 RMxprt 离线标定）翻 `calibrated=true` 后方可覆盖权威值。
+   - 自检：`scripts/verify_analytic_local.mjs` 9 断言 ALL PASS（含「权威 temp_rise/yoke 未被覆盖」「实验附字段独立存在」）。
+2. **C/S1 槽数 spec 覆盖**（`tools/l0/param-matrix.mjs`）：spec 显式给定 `slots_stator`/`rotor_slots` 时覆盖候选（不碰 `turns_per_coil`，向后兼容）；缺省仍按 `SLOT_MAP` 组合。
+3. **配额版本上报**（`lib/quota.mjs`）：上报体新增 `tier:'free'` 与 `plugin_version`（从 package.json 读取，随发包自动更新），供接收端/mirror 做版本分布统计；非阻塞、不影响配额逻辑。
+4. **依赖**：`@wangxue98/dsh-motor-ai-core` `^1.4.0` → `^1.4.1`（消费 V08 轭磁密 RMxprt 真值校准：94 行 by/truth 中位 0.363→1.001、零误判；Y160 B/D failed→warning）。
+5. **门禁**：`scripts/verify.mjs` 维持 133/133 全过；新增 analytic 自检脚本（独立于主门禁）。
+
 ## [0.6.0] - 2026-10-17 — P0 四项配套（依赖 core 1.4.0）+ l0/lib 陈旧副本标注
 
 > **性质：工具层接线 + 门禁断言升级；规则引擎改动全在 core 侧。**

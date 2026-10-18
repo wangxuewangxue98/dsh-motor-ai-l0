@@ -369,8 +369,14 @@ export function buildParamMatrix(rawSpec, config = {}) {
         const statorSlotCandidates = isPm
           ? (PMSM_SLOT_MAP[pole] ?? PMSM_SLOT_MAP[8])
           : (SLOT_MAP[pole] ?? SLOT_MAP[8]).map((pair) => pair[0])
-        const slotsStator = statorSlotCandidates[comboIndex % statorSlotCandidates.length]
-        const slotsRotor = isPm ? 0 : (SLOT_MAP[pole] ?? SLOT_MAP[8])[comboIndex % (SLOT_MAP[pole] ?? SLOT_MAP[8]).length][1]
+        const rotorSlotCandidates = isPm ? [0] : (SLOT_MAP[pole] ?? SLOT_MAP[8]).map((pair) => pair[1])
+        // C/S1：spec 显式给定真实 △接 Ns / 转子笼数时覆盖候选（不碰 turns_per_coil，向后兼容）
+        const slotsStator = spec.slots_stator != null
+          ? Number(spec.slots_stator)
+          : statorSlotCandidates[comboIndex % statorSlotCandidates.length]
+        const slotsRotor = spec.rotor_slots != null
+          ? Number(spec.rotor_slots)
+          : rotorSlotCandidates[comboIndex % rotorSlotCandidates.length]
         const parallels = [1, 2]
 
         const coreLength = fitLambdaWithinRange(dEff, l, pole)

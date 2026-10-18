@@ -31,6 +31,7 @@ import {
   buildSurrogateResult,
   DEFAULT_CONFIDENCE_THRESHOLD,
 } from '@wangxue98/dsh-motor-ai-core'
+import { predictAnalyticBatch, analyticModeOf, ANALYTIC_MINC } from './analytic-engine.mjs'
 import { getUsageSink, logUsage } from '@wangxue98/dsh-motor-ai-core'
 import { assertFreeQuota, QuotaExceededError } from '../../lib/quota.mjs'
 import { assessApplicability, scenarioFromMatrix } from '@wangxue98/dsh-motor-ai-core'
@@ -329,6 +330,7 @@ export function runL0Estimate(rawArgs, config = {}) {
   const failures = []
   const results = []
   let surrogateFallbacks = 0
+  let analyticFallbacks = 0
 
   // ---- 代理模型通道（需显式启用 l0Mode='surrogate'）----
   // 'auto' 与 'surrogate' 都走代理通道；'auto' 下代理失败/降级会自动回退公式通道（函数尾部）
@@ -458,7 +460,105 @@ export function runL0Estimate(rawArgs, config = {}) {
       console.warn('[L0] surrogate 通道异常，降级公式:', err.message)
     }
   }
-  
+
+  // ---- 解析迭代通道（A 方案第三支路，需显式启用 l0Mode='analytic'）----
+  // 与 surrogate 平级：复用公式通道永久回退保底（零回归）。
+  // 内部增强（B/S2 磁路饱和 + 热-电耦合迭代）由 env DSH_L0_ANALYTIC 门控：
+  //   off(默认)=骨架（公式基线+通道元数据）；on=迭代生效逐行回退；
+  //   shadow=公式主出数+解析并行记偏差；exclusive=仅解析，不收敛标 infeasible。
+  if (l0Mode === 'analytic') {
+    try {
+      const { results: predictions, fallbacks } = predictAnalyticBatch(
+        paramsList,
+        { estimateOpts, mode: analyticModeOf(config) }
+      )
+      analyticFallbacks = fallbacks
+
+      const assumedTypeRows = paramsList.filter(
+        (r) => resolveMotorType(r?.motor_type).assumed
+      ).length
+
+      for (let i = 0; i < paramsList.length; i++) {
+        const row = paramsList[i]
+        const shape = assertMatrixShape(row ?? {})
+        if (!shape.ok) {
+          failures.push({
+            index: i,
+            missing: shape.missing,
+            typeErrors: shape.typeErrors,
+          })
+          continue
+        }
+        const pred = predictions[i]
+        if (pred.fallback_to_formula || pred.error) {
+          // 迭代不收敛/异常，降级公式通道（exclusive 模式已标 infeasible，仍走公式保底输出）
+          results.push(quickL0Estimate(row, estimateOpts(row)))
+        } else {
+          // 解析通道已返回完整结果对象（公式基线 + 迭代覆盖/元数据）
+          results.push(pred)
+        }
+      }
+
+      if (results.length === paramsList.length) {
+        const elapsed = Date.now() - started
+        const ascending = ASCENDING_FIELDS.has(sortBy)
+        results.sort((a, b) => (ascending
+          ? sortKey(a, sortBy) - sortKey(b, sortBy)
+          : sortKey(b, sortBy) - sortKey(a, sortBy)))
+
+        const effectiveTopN = wantAll ? results.length : topN
+        const topRows = results.slice(0, effectiveTopN)
+        applyMonteCarlo(topRows, mcSamples, mcCiLevel, estimateOpts)
+
+        const handoff = buildHandoff(topRows, {
+          fromLevel: 'l0',
+          toLevel: 'l1',
+          ranking: ['efficiency', 'torque_density'],
+        })
+
+        const feasibleCount = results.filter((r) => r.feasible === true).length
+        const recommended = topRows.find((r) => r.feasible === true) ?? null
+
+        return {
+          results: topRows,
+          handoff,
+          total: paramsList.length,
+          success: results.length,
+          failed: failures.length,
+          failures: failures.length ? failures : undefined,
+          returned: topRows.length,
+          feasible_count: feasibleCount,
+          returned_feasible_count: topRows.filter((r) => r.feasible === true).length,
+          motor_type_assumed_rows: assumedTypeRows > 0 ? assumedTypeRows : undefined,
+          recommended: recommended
+            ? { stator_od: recommended.params?.stator_od, poles: recommended.params?.poles, efficiency: recommended.efficiency, verdict: recommended.verdict }
+            : null,
+          sorted_by: sortBy,
+          sort_order: ascending ? 'asc' : 'desc',
+          l0_mode: 'analytic',
+          analytic_mode: analyticModeOf(config),
+          analytic_calibrated: false,
+          analytic_fallbacks: analyticFallbacks,
+          analytic_note: '解析通道为实验特性：B/S2 迭代增强（μr(B)饱和 + 热-电耦合）绝对值待 S0 RMxprt 标定；'
+            + '默认 skeleton（env DSH_L0_ANALYTIC=off）仅叠加通道元数据，结果等同公式基线。',
+          applicability: applicability.verdict,
+          applicability_reasons: applicability.reasons.length ? applicability.reasons : undefined,
+          applicability_advice: applicability.advice ?? undefined,
+          applicability_note: gateNote,
+          mc_enabled: mcSamples > 0,
+          mc_samples: mcSamples > 0 ? mcSamples : undefined,
+          mc_ci_level: mcSamples > 0 ? mcCiLevel : undefined,
+          fields: { native: L0_NATIVE_FIELDS, mirror: L1_MIRROR_FIELDS },
+          elapsed_ms: elapsed,
+          avg_ms_per_case: paramsList.length ? Math.round((elapsed / paramsList.length) * 100) / 100 : 0,
+        }
+      }
+    } catch (err) {
+      // 解析通道异常，降级公式通道
+      console.warn('[L0] analytic 通道异常，降级公式:', err.message)
+    }
+  }
+
   // ---- 公式通道（默认/降级）----
   for (let i = 0; i < paramsList.length; i += 1) {
     const row = paramsList[i]
