@@ -139,6 +139,10 @@ export const Config = Schema.object({
   issueResolvedEndpoint: Schema.string().default('')
     .description('已解决问题回传目标 URL（POST JSON）。为空 = 自动回退 commerceBackendUrl + /api/dsh/issue-resolved；二者都空 = 不启用'),
 
+  // ---- 在线知识库入口（P1-C；为空 = 所有文案不带链接，默认关闭）----
+  knowledgeBaseUrl: Schema.string().default('')
+    .description('在线知识库入口 URL。配置后：①额度用尽/错误引导文案追加「在线知识库」链接（问题排查/改进措施直达）；②submit_resolved_case 未启用时提示先去知识库查因。为空 = 完全不显示'),
+
   // ---- L1/L2 预留（实现后需同步扩展 IMPLEMENTED_LEVELS 允许列表）----
   l1Enabled: Schema.boolean().default(false)
     .description('预留：L1 RMxprt 磁路法求解，当前阶段不生效'),

@@ -46,6 +46,10 @@
         # 身份类字段（账号/路径/提示词/密钥）经白名单硬排除。开启后通过 submit_resolved_case 工具触发。
         issueResolvedEnabled: false       # 总开关（boolean）；默认关闭
         issueResolvedEndpoint: ''         # 目标 URL；为空则自动回退 commerceBackendUrl + /api/dsh/issue-resolved
+        # ---- 在线知识库入口（P1-C；为空 = 文案不带链接）----
+        # 配置后：额度用尽/错误引导文案追加「在线知识库」链接；submit_resolved_case
+        # 未启用时提示先去知识库查因。建议填可公开访问的知识库分享地址。
+        knowledgeBaseUrl: ''              # 在线知识库入口 URL；空 = 完全不显示
         # ---- 每日免费额度闸门（P0 透明度修复：开关显式化；v0.5.0 语义升级）----
         # 默认开启。v0.5.0 起闸门语义 = 「本地为准的硬闸 + 非阻塞旁路遥测」：
         #   - 每日 10 次（DSH_FREE_DAILY_LIMIT 可覆盖），按本地自然日重置，**本地计数、断网也拦**；

@@ -77,13 +77,19 @@ export async function runSubmitResolvedCase(args, config = {}) {
     })
     return { status: 'submitted', message: '已提交到知识库回流通道，感谢你的知识贡献！' }
   }
-  // disabled / no-endpoint：提示用户开启开关，不视为错误
+  // disabled / no-endpoint：提示用户开启开关，不视为错误；配了知识库则引导先去查因（P1-C）
   if (res.reason === 'disabled' || res.reason === 'no-endpoint') {
+    const kb = String(config.knowledgeBaseUrl || '').trim()
+    const kbHint = kb
+      ? `可先到在线知识库查找同类问题的原因与改进措施：${kb}\n`
+      : ''
     return {
       status: 'skipped',
       message:
         '已解决问题回流当前未启用：请在插件配置中设置 issueResolvedEnabled: true'
-        + '（并保留 commerceBackendUrl 或显式填 issueResolvedEndpoint）。开启后可自动发回知识库。',
+        + '（并保留 commerceBackendUrl 或显式填 issueResolvedEndpoint）。开启后可自动发回知识库。\n'
+        + kbHint
+        + '你的内容未丢失，可在开启后重新提交。',
     }
   }
   return {
