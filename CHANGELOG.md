@@ -5,6 +5,21 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.6.4] - 2026-10-19 — P1 反馈回流三件套 + 解析齿磁密口径统一（π/2 波形系数） + S0 数据集加载
+
+> **性质：additive 功能（回流通道 opt-in 默认关，零回归）+ 解析通道内部口径修复（P1-1）；权威字段仍走公式基线，解析通道不改主指标。**
+
+1. **P1-B `submit_resolved_case` 工具 + issue-resolved 回流通道**（opt-in 默认关）：新增 `lib/issue-resolved.mjs`、`tools/l0/issue-resolved-tool.mjs`，`cordis.patch.yml` 注册；`scripts/verify.mjs` 门禁同步扩展（+59 行）。
+2. **P1-A 回流端点语义统一**：空端点自动回退 `commerceBackendUrl` 派生（opt-in 保持），消除"配了后端却走空端点"的静默失效。
+3. **P1-C 在线知识库入口**：quota 文案与 `submit_resolved_case` 提示注入 KB 链接，额度用尽/反馈场景给出可点路径。
+4. **P1-1 `doSaturationLoop` 齿磁密口径统一**（analytic-engine.mjs）：
+   - 齿部等效面积补乘 `STACKING_FACTOR`（净铁长 = L·k_stack，旧式漏乘 ⇒ Bt 低估 ~2%）与 `K_WAVE = π/2`（波形系数）。
+   - 根因：本循环 `Φ = Bg·Ag` 为**平均磁通**口径，而 formula-engine / RMxprt 的 `Bg` 为**峰值**（.res `Air-Gap Flux Density` 实证），两口径差 π/2 ⇒ 解析 Bt 系统性偏高同倍（与 0.6.3 核算报告 P0-b"两引擎差 1.53×"为同一根因）。
+   - 实测：Y160L-4（设计齿宽 3.92）Bt 2.715T → 1.728T（真值 1.398T；修前 +94% → 修后 +24%）。
+   - ⚠ **残余 +24% 归因齿宽口径**（本处吃齿身宽，真机梯形齿有效宽更大），需 ≥30 台带真实齿宽的异步机真值方可标定；本次**不硬编码补偿系数、不外推**。
+5. **`calibrate_analytic_rmxprt.mjs`**：新增 `--dataset` 加载 `output/s0_calibration_dataset.json`（缺文件回退内置 DESIGN_SWEEP），为后续解析标定提供 RMxprt 真值来源。
+6. **门禁**：`scripts/verify.mjs` 全量 **134/134 通过**（含 P1-1 后解析通道物理有界断言）。
+
 ## [0.6.3] - 2026-10-18 — 修复 analytic doSaturationLoop 轭磁密 P0 几何 Bug（按 RMxprt 真值口径对齐）
 
 > **性质：解析通道内部缺陷修复（仅改 tools/l0/analytic-engine.mjs 几何口径 + 自检加固）；默认 OFF 零回归，权威字段仍走公式基线。**
