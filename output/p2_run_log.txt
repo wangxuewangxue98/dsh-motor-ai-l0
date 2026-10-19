@@ -1,0 +1,45 @@
+[select] 选中 42 行 (OMIT_WIRE=True, reliable_only=True)
+[run] 42 台异步机, 分片 14/批
+  [FAIL] P2_2.2kW_V220: mode=rmxprt reason=RMxprt 未解出有效输出功率(power<=0); 估算效率=0.0%; 根因=输出功率为0(求解失效)
+  [FAIL] P2_2.2kW_V220: mode=rmxprt reason=RMxprt 未解出有效输出功率(power<=0); 估算效率=0.0%; 根因=输出功率为0(求解失效)
+  [FAIL] P2_2.2kW_V220: mode=rmxprt reason=RMxprt 未解出有效输出功率(power<=0); 估算效率=0.0%; 根因=输出功率为0(求解失效)
+  [FAIL] P2_2.2kW_V220: mode=rmxprt reason=RMxprt 未解出有效输出功率(power<=0); 估算效率=0.0%; 根因=输出功率为0(求解失效)
+  [FAIL] P2_2.2kW_V220: mode=rmxprt reason=RMxprt 未解出有效输出功率(power<=0); 估算效率=0.0%; 根因=输出功率为0(求解失效)
+  [FAIL] P2_2.2kW_V220: mode=rmxprt reason=RMxprt 未解出有效输出功率(power<=0); 估算效率=0.0%; 根因=输出功率为0(求解失效)
+  [FAIL] P2_2.2kW_V220: mode=rmxprt reason=RMxprt 未解出有效输出功率(power<=0); 估算效率=0.0%; 根因=输出功率为0(求解失效)
+  [OK] P4_55.0kW_V660: eff=92.0741% Tst=1.6319 Tmax=3.031 Ist=6.5191
+  [OK] P4_55.0kW_V660: eff=88.9055% Tst=1.0606 Tmax=2.3429 Ist=5.2987
+  [OK] P4_55.0kW_V660: eff=89.6953% Tst=1.1706 Tmax=2.4541 Ist=5.8105
+  [OK] P4_55.0kW_V660: eff=91.8452% Tst=1.2586 Tmax=2.3921 Ist=5.2938
+  [OK] P4_55.0kW_V660: eff=89.0014% Tst=1.312 Tmax=2.5076 Ist=5.7105
+  [OK] P4_55.0kW_V660: eff=88.8785% Tst=1.2433 Tmax=2.2044 Ist=4.9854
+  [OK] P4_55.0kW_V660: eff=88.2638% Tst=1.1765 Tmax=2.0863 Ist=4.5623
+  [OK] P4_55.0kW_V660: eff=88.1271% Tst=1.0158 Tmax=1.9054 Ist=4.2142
+  [OK] P4_55.0kW_V660: eff=89.4244% Tst=1.0283 Tmax=2.1624 Ist=5.1078
+  [OK] P4_55.0kW_V660: eff=92.1981% Tst=1.2064 Tmax=2.7499 Ist=6.1623
+  [OK] P4_55.0kW_V660: eff=88.8962% Tst=0.9633 Tmax=1.956 Ist=4.5168
+  [OK] P4_55.0kW_V660: eff=88.7731% Tst=0.9786 Tmax=2.0684 Ist=4.6834
+  [OK] P4_55.0kW_V660: eff=89.0014% Tst=1.312 Tmax=2.5076 Ist=5.7105
+  [OK] P4_55.0kW_V660: eff=91.689% Tst=1.624 Tmax=2.6975 Ist=5.7408
+  [OK] P4_55.0kW_V660: eff=88.3142% Tst=1.1925 Tmax=2.1057 Ist=4.6073
+  [OK] P4_55.0kW_V660: eff=88.9366% Tst=1.1628 Tmax=2.8927 Ist=6.3821
+  [OK] P4_55.0kW_V660: eff=88.7258% Tst=1.384 Tmax=3.3393 Ist=7.1893
+  [OK] P4_55.0kW_V660: eff=92.1044% Tst=1.6524 Tmax=3.0591 Ist=6.5898
+  [OK] P4_55.0kW_V660: eff=88.8006% Tst=0.8014 Tmax=2.008 Ist=4.693
+  [OK] P4_55.0kW_V660: eff=89.748% Tst=1.1507 Tmax=2.406 Ist=5.7458
+  [OK] P4_55.0kW_V660: eff=91.8452% Tst=1.2586 Tmax=2.3921 Ist=5.2938
+  [OK] P4_55.0kW_V660: eff=87.2841% Tst=0.6912 Tmax=1.959 Ist=4.5549
+  [OK] P4_55.0kW_V660: eff=88.8785% Tst=1.2433 Tmax=2.2044 Ist=4.9854
+  [OK] P4_55.0kW_V660: eff=88.3142% Tst=1.1925 Tmax=2.1057 Ist=4.6073
+  [OK] P4_55.0kW_V660: eff=88.2201% Tst=0.4419 Tmax=1.562 Ist=3.5596
+  [OK] P4_55.0kW_V660: eff=92.2718% Tst=1.7811 Tmax=3.8285 Ist=8.4279
+  [OK] P4_55.0kW_V660: eff=89.4244% Tst=1.0283 Tmax=2.1624 Ist=5.1078
+  [OK] P4_55.0kW_V660: eff=89.0043% Tst=1.1605 Tmax=2.3309 Ist=5.2555
+  [OK] P4_55.0kW_V660: eff=88.8006% Tst=0.8014 Tmax=2.008 Ist=4.693
+  [OK] P4_55.0kW_V660: eff=91.8701% Tst=1.2771 Tmax=2.4168 Ist=5.3508
+  [OK] P4_55.0kW_V660: eff=89.1496% Tst=1.4887 Tmax=2.9839 Ist=6.5522
+  [OK] P4_55.0kW_V660: eff=88.2273% Tst=1.2854 Tmax=2.1191 Ist=4.6617
+  [OK] P4_55.0kW_V660: eff=88.2638% Tst=1.1765 Tmax=2.0863 Ist=4.5623
+  [OK] P4_55.0kW_V660: eff=88.2201% Tst=0.4419 Tmax=1.562 Ist=3.5596
+  [OK] P4_55.0kW_V660: eff=88.6591% Tst=1.3684 Tmax=3.3185 Ist=7.1096
+[run] 写出 output/p2_torque_truth.json | 真解 35/42, Tst 35, Tmax 35, Ist 35 | 耗时 585.1s
