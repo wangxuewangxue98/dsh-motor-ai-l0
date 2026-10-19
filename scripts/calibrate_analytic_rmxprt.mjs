@@ -12,6 +12,7 @@
  *
  * 用法：
  *   node scripts/calibrate_analytic_rmxprt.mjs --dry-run [--out calibration_schema.json]
+ *   node scripts/calibrate_analytic_rmxprt.mjs --dry-run --dataset output/s0_calibration_dataset.json
  *   node scripts/calibrate_analytic_rmxprt.mjs --run          # 需 ANSYS，否则拒绝
  *
  * 退出码：
@@ -20,7 +21,7 @@
  *   3  参数错误
  */
 
-import { existsSync, writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync, readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -28,6 +29,27 @@ import {
 } from '../tools/l0/analytic-engine.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// S0 标定数据集默认路径（由 scripts/extract_s0_truth.py 生成：designs.db rmxprt 真值清洗产物）
+const DEFAULT_DATASET = resolve(__dirname, '..', 'output', 's0_calibration_dataset.json')
+
+/** 从 S0 数据集 JSON 加载设计清单；缺文件回退内置 DESIGN_SWEEP */
+function loadDesigns(datasetPath) {
+  const p = datasetPath || DEFAULT_DATASET
+  if (!existsSync(p)) return { designs: null, dataset: null }
+  const ds = JSON.parse(readFileSync(p, 'utf8'))
+  const rows = Array.isArray(ds.rows) ? ds.rows : []
+  if (!rows.length) return { designs: null, dataset: null }
+  const designs = rows.map((r) => ({
+    ...r,
+    truth: r.truth ?? null,
+    truth_status: r.truth_status ?? 'rmxprt',
+    expected_rmxprt_artifacts: r.truth_status === 'pending_rmxprt'
+      ? ['FluxLinkage', 'LossSummary', 'ThermalMap']
+      : ['FluxLinkage', 'LossSummary', 'ThermalMap'],
+  }))
+  return { designs, dataset: { path: p, stats: ds.stats ?? null, gate: ds.gate ?? null } }
+}
 
 // ── 代表性标定样本（覆盖工频中低压异步 + PMSM 多机座）──
 // 真值来源：designs.db / case_motors（Y 系列 + RUN 系列），由 RMxprt 精算。
@@ -51,11 +73,20 @@ function requiresAnsys() {
 }
 
 /** 写出标定 schema（dry-run）：声明扫描设计与待反算系数 */
-function dryRun(outPath) {
+function dryRun(outPath, datasetArg) {
+  const { designs, dataset } = loadDesigns(datasetArg)
+  const sweep = designs ?? DESIGN_SWEEP
+  const nTruth = sweep.filter((d) => d.truth).length
+  const nPending = sweep.length - nTruth
   const schema = {
     generated_by: 'calibrate_analytic_rmxprt.mjs',
     mode: 'dry-run',
     note: '本 schema 描述 RMxprt 离线标定计划；真实标定需 ANSYS + RMxprt 授权（见 requiresAnsys 守卫）。',
+    dataset: dataset
+      ? { source: dataset.path, stats: dataset.stats, gate: dataset.gate,
+          designs_with_truth: nTruth, designs_pending_rmxprt: nPending }
+      : { source: 'builtin DESIGN_SWEEP (fallback, 4 机型)',
+          designs_with_truth: 0, designs_pending_rmxprt: sweep.length },
     target_coefficients: {
       bh_curve: {
         consumed_by: 'doSaturationLoop (tools/l0/analytic-engine.mjs)',
@@ -76,10 +107,11 @@ function dryRun(outPath) {
         output_file: 'lib/analytic-calib/thermal_rth.json',
       },
     },
-    designs: DESIGN_SWEEP.map((d) => ({ ...d, expected_rmxprt_artifacts: ['FluxLinkage', 'LossSummary', 'ThermalMap'] })),
+    designs: sweep.map((d) => ({ ...d, expected_rmxprt_artifacts: ['FluxLinkage', 'LossSummary', 'ThermalMap'] })),
     validation: {
       metric: 'MAE(efficiency) analytic vs RMxprt',
       gate: '<= 1.5pt 且回退率 < 1%',
+      flux_gate: 'MAE(B_tooth/B_yoke/B_gap) analytic vs RMxprt 真值；回灌后与 designs.db 真值反算',
       post_calibration_action: '将 analytic_calibrated 置 true、confidence 由 0.5 上调至 0.8（提案 A-⑦）',
     },
   }
@@ -87,7 +119,8 @@ function dryRun(outPath) {
     writeFileSync(resolve(__dirname, outPath), JSON.stringify(schema, null, 2), 'utf8')
     console.log(`[calibrate] dry-run schema 已写出 → ${outPath}`)
   }
-  console.log(JSON.stringify(schema, null, 2))
+  const head = { ...schema, designs: `(${sweep.length} 机型，详见 --out 文件)` }
+  console.log(JSON.stringify(head, null, 2))
   return 0
 }
 
@@ -111,14 +144,16 @@ function realRun() {
 // ── CLI 解析 ──
 const args = process.argv.slice(2)
 if (args.includes('--help') || args.includes('-h')) {
-  console.log('用法: node scripts/calibrate_analytic_rmxprt.mjs [--dry-run|--run] [--out <path>]')
+  console.log('用法: node scripts/calibrate_analytic_rmxprt.mjs [--dry-run|--run] [--out <path>] [--dataset <path>]')
   process.exit(0)
 }
 const outIdx = args.indexOf('--out')
 const outPath = outIdx >= 0 ? args[outIdx + 1] : 'calibration_schema.json'
+const dsIdx = args.indexOf('--dataset')
+const datasetPath = dsIdx >= 0 ? args[dsIdx + 1] : undefined
 
 if (args.includes('--run')) {
   process.exit(realRun())
 }
 // 默认 = dry-run
-process.exit(dryRun(outPath))
+process.exit(dryRun(outPath, datasetPath))

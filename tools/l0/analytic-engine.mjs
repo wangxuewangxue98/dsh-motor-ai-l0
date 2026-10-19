@@ -22,7 +22,7 @@
  *   故解析结果恒标 analytic_calibrated:false + confidence:0.5（公式级），待 S0 标定后上调。
  */
 
-import { quickL0Estimate, estimateTempRise, B_YOKE_SAT_T } from '@wangxue98/dsh-motor-ai-core'
+import { quickL0Estimate, estimateTempRise, B_YOKE_SAT_T, STACKING_FACTOR } from '@wangxue98/dsh-motor-ai-core'
 
 // ───────────────────────────────────────────────────────────
 // A-⑥ env 开关（仿 formula-engine.mjs:46-48 范式）
@@ -109,7 +109,17 @@ export function doSaturationLoop(p, maxIter = 60) {
     return { B_delta: B_delta_base, B_t: B_t_base, B_y: B_y_base, muR_t: muR0, muR_y: muR0, saturated: false, converged: false, iterations: 0, reason: '几何不足' }
   }
   const Ag = Math.PI * Di * L / (2 * pp)
-  const At = (Zs / (2 * pp)) * toothWidth * L
+  // P1-1（2026-10-19）：齿部等效面积 = 每极齿数 × 齿宽 × 净铁长（叠压系数）× 波形系数。
+  // ① STACKING_FACTOR：净铁长 = L·k_stack，旧式漏乘 ⇒ 净铁高估 2%、Bt 低估 2%。
+  // ② K_WAVE=π/2：本循环 Φ = Bg·Ag 是**平均磁通**口径（Ag 为极面积），而 formula-engine /
+  //    RMxprt 的 Bg 是**峰值**（.res 实证：Air-Gap Flux Density 为峰值；Φ_peak = (2/π)·Bg·Ag）。
+  //    两口径差 π/2 ⇒ 解析 Bt 系统性偏高同倍。乘上 π/2 后与 formula-engine:584 同口径
+  //    （线性区收敛到基线），实测：Y160L-4（设计齿宽 3.92）2.715 → 1.728T（真值 1.398，+24%），
+  //    未修前 +94%。
+  // ⚠ 残余 +24% 来自**齿宽口径**（本处吃的是齿身宽，真机梯形齿的有效宽更大），
+  //    需 ≥30 台带真实齿宽的异步机真值才能标定，本次不外推。
+  const K_WAVE = Math.PI / 2
+  const At = (Zs / (2 * pp)) * toothWidth * L * STACKING_FACTOR * K_WAVE
   // 轭部为整环铁；磁通在轭中平分（每侧 Φ/2），故 By=Φ/Ay（Ay 即整环截面积，
   // 不再额外 /(2·pp)；原写法 Ay 又除 2·pp 导致轭面积被缩小 2·pp 倍 → 轭密被放大同倍）。
   // 此面积模型与 formula-engine.mjs:584-585 的 toothBraw/yokeBraw 同口径（线性区收敛到基线）。
