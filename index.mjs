@@ -114,6 +114,14 @@ export const Config = Schema.object({
   experienceBatchSize: Schema.number().default(200)
     .description('单次经验回传最多携带的 design_exp 条数（分批推进 offset，失败不推进、下批重报）'),
 
+  // ---- 已解决问题回流（知识积累闭环，P1-B；显式可选，默认关闭）----
+  // 与 telemetry/experience 语义隔离：本项回传「用户主动提交的已解决问题知识」
+  // （问题分类/症状/根因/改进措施/解决过程），喂在线知识库做知识积累。
+  issueResolvedEnabled: Schema.boolean().default(false)
+    .description('已解决问题回流开关（默认 false；需配合 issueResolvedEndpoint 或 commerceBackendUrl 才真正生效）。开启后用户通过 submit_resolved_case 工具把「问题→根因→改进措施→解决过程」发回接收端做知识积累；绝不包含身份/路径/提示词/密钥'),
+  issueResolvedEndpoint: Schema.string().default('')
+    .description('已解决问题回传目标 URL（POST JSON）。为空 = 自动回退 commerceBackendUrl + /api/dsh/issue-resolved；二者都空 = 不启用'),
+
   // ---- L1/L2 预留（实现后需同步扩展 IMPLEMENTED_LEVELS 允许列表）----
   l1Enabled: Schema.boolean().default(false)
     .description('预留：L1 RMxprt 磁路法求解，当前阶段不生效'),
@@ -149,9 +157,14 @@ export async function apply(ctx, config) {
   // 4b. 设计经验脱敏回传（并行第二通道，显式可选，默认关闭）
   setupExperienceUpload(ctx, config)
 
+  // 4c. 已解决问题回流（知识积累闭环，P1-B；由 submit_resolved_case 工具即时触发）
+  setupIssueResolved(ctx, config)
+
   const telemetryOn = config.telemetryEnabled === true && !!String(config.telemetryEndpoint || '').trim()
   const expOn = config.designExperienceUpload === true
     && !!String(config.experienceEndpoint || config.telemetryEndpoint || '').trim()
+  const issOn = config.issueResolvedEnabled === true
+    && !!String(config.issueResolvedEndpoint || config.commerceBackendUrl || '').trim()
   ctx.logger?.info?.(
     `[dsh-motor-ai-l0] L0 已加载，模式: ${config.l0Mode}` +
     ` | 效率封顶 ${config.efficiencyCap}%` +
@@ -161,7 +174,8 @@ export async function apply(ctx, config) {
     ` | 付费等级 ${tierOf(config.level)}` +
     ` | 用量日志 ${config.usageLog === false ? 'off' : 'on'}` +
     ` | 脱敏回传 ${telemetryOn ? `on → ${String(config.telemetryEndpoint).slice(0, 40)}` : 'off'}` +
-    ` | 设计经验回传 ${expOn ? `on → ${String(config.experienceEndpoint || config.telemetryEndpoint).slice(0, 40)}` : 'off'}`
+    ` | 设计经验回传 ${expOn ? `on → ${String(config.experienceEndpoint || config.telemetryEndpoint).slice(0, 40)}` : 'off'}` +
+    ` | 已解决问题回流 ${issOn ? `on → ${String(config.issueResolvedEndpoint || config.commerceBackendUrl + '/api/dsh/issue-resolved').slice(0, 40)}` : 'off'}`
   )
 }
 
@@ -241,6 +255,24 @@ function setupExperienceUpload(ctx, config) {
     process.once('SIGINT', flushOnExit)
   }
   if (typeof process.on === 'function') process.on('beforeExit', flushOnExit)
+}
+
+/**
+ * 已解决问题回流生命周期（知识积累闭环，P1-B）。
+ * 与 setupTelemetry / setupExperienceUpload 同构，但**无需周期 flush**：
+ * 提交是 submit_resolved_case 工具内的即时 fire-and-forget 调用，本函数仅做
+ * 启用态日志与防御性探测，绝不影响工具主流程。
+ * @param {import('@deepseek-ai/cordis').Context} ctx
+ * @param {Config} config
+ */
+function setupIssueResolved(ctx, config) {
+  const enabled = config.issueResolvedEnabled === true
+  const endpoint = String(config.issueResolvedEndpoint || config.commerceBackendUrl || '').trim()
+  if (!enabled || !endpoint) {
+    ctx.logger?.info?.('[dsh-motor-ai-l0] 已解决问题回流：off（issueResolvedEnabled=false 或端点未配）')
+    return
+  }
+  ctx.logger?.info?.(`[dsh-motor-ai-l0] 已解决问题回流：on → ${endpoint.slice(0, 40)}`)
 }
 
 export default { name, inject, Config, apply }

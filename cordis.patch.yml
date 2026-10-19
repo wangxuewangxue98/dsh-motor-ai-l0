@@ -40,6 +40,12 @@
         designExperienceUpload: false     # 总开关（boolean）；默认关闭
         experienceEndpoint: ''            # 目标 URL；为空则回退复用 telemetryEndpoint
         experienceBatchSize: 200          # 单批最多携带的 design_exp 样本条数
+        # ---- 已解决问题回流（P1-B；显式可选，默认关闭）----
+        # 与上方 telemetry/designExperienceUpload 相互独立：本项回传「用户主动提交的
+        # 已解决问题知识」（问题分类/症状/根因/改进措施/解决过程），喂在线知识库做知识积累。
+        # 身份类字段（账号/路径/提示词/密钥）经白名单硬排除。开启后通过 submit_resolved_case 工具触发。
+        issueResolvedEnabled: false       # 总开关（boolean）；默认关闭
+        issueResolvedEndpoint: ''         # 目标 URL；为空则回退复用 commerceBackendUrl + /api/dsh/issue-resolved
         # ---- 每日免费额度闸门（P0 透明度修复：开关显式化；v0.5.0 语义升级）----
         # 默认开启。v0.5.0 起闸门语义 = 「本地为准的硬闸 + 非阻塞旁路遥测」：
         #   - 每日 10 次（DSH_FREE_DAILY_LIMIT 可覆盖），按本地自然日重置，**本地计数、断网也拦**；

@@ -35,6 +35,7 @@ import {
   computeTorqueD2L, computeTorqueStress, l0TorqueEstimate, isSurrogateTorqueEnabled,
   queryTypicalBLoading, buildSurrogateResult, WINDING_FACTOR, STACKING_FACTOR,
   deriveTorqueEnvelope, queryTorqueOverloadFactor, TORQUE_OVERLOAD_FACTOR,
+  AIR_GAP_FLUX_DEFAULT, AIR_GAP_FLUX_BY_POLES,
 } from '@wangxue98/dsh-motor-ai-core'
 import { buildParamMatrix, recommendPoles, poleCandidates } from '../tools/l0/param-matrix.mjs'
 import { runL0Estimate } from '../tools/l0/l0-estimate.mjs'
@@ -604,24 +605,32 @@ check('estimate: v0.2.4 封顶值本身不变 —— efficiency 仍与 L1 同口
   must(row.efficiency_raw >= row.efficiency,
     `真值不得小于钳位值：raw=${row.efficiency_raw} < capped=${row.efficiency}`)
   must(row.efficiency_capped === true, '该样本应被标记触顶')
-  // 不触顶场景：15kW 小机座不得被误标
+  // 不触顶场景：改用**真机 Y160L-4**（15kW/4极/260−170×195），直接锚定 RMxprt 实测真值。
+  // 旧夹具 Dso=180/L=100 的功率密度约为真机的 4.3 倍，属不可制造的不现实设计：
+  // P1-5 损耗口径修正后其 raw 效率由 93.4% 降到 85.69%（合法但跌出原 [88,99] 工程域），
+  // 根因在夹具本身而非模型失真 —— 故换真机夹具，并把断言从"工程合理域"升级为**真值锚**
+  // （比原判据更强：真值由 RMxprt 独立实跑取得，非自证）。
+  const Y160L4_TRUTH = { eff: 89.17, totalLossW: 1821 }  // RMxprt 实测 2026-10-18
   const small = quickL0Estimate({
-    stator_od: 180, stator_id: 108, core_length: 100, air_gap: 0.6,
+    stator_od: 260, stator_id: 170, core_length: 195, air_gap: 0.51,
     poles: 4, voltage: 380, speed: 1460, slots_stator: 36, slots_rotor: 28,
-    rotor_od: 106.8, tooth_width: 4.7, power_kw: 15, cooling: 'forced_air',
+    rotor_od: 168.98, tooth_width: 3.92, power_kw: 15, cooling: 'forced_air',
+    motor_type: 'induction', turns_per_coil: 31,
   }, { efficiencyCap: 96 })
-  // v3 损耗标定（2026-10-08）后 15kW raw 效率进入 96~98 域（铜损高估 +201%→−21%、
-  // 铁耗换真值 B 口径 —— 旧「15kW 必不触顶」断言固化了损耗失真下的效率假值，故撤除）。
-  // 改为断言 capped 标记与 raw 自洽 —— 这才是该样本的本意（不触顶行标记 false 且两值相等）。
   must(small.efficiency_capped === (small.efficiency_raw > 96),
     `capped 标记必须与 raw 自洽：raw=${small.efficiency_raw} capped=${small.efficiency_capped}`)
   if (!small.efficiency_capped) {
     must(Math.abs(small.efficiency_raw - small.efficiency) < 1e-9,
       `未触顶行真值应等于显示值：raw=${small.efficiency_raw} vs ${small.efficiency}`)
   }
-  must(small.efficiency_raw >= 88 && small.efficiency_raw <= 99,
-    `15kW raw 效率应落工程合理域 [88,99]（v3 机械耗标定后基线 ≈93.4），实际 ${small.efficiency_raw}`)
-  return `大样本 capped=${row.efficiency}%/raw=${row.efficiency_raw}%；15kW raw=${small.efficiency_raw}% capped=${small.efficiency_capped}`
+  const dEff = Math.abs(small.efficiency_raw - Y160L4_TRUTH.eff)
+  must(dEff <= 2,
+    `Y160L-4 raw 效率应落 RMxprt 真值 ±2pt（真值 ${Y160L4_TRUTH.eff}%；P1-5 前为 93.5% 即 +4.33pt 乐观），`
+    + `实际 ${small.efficiency_raw}%（差 ${dEff.toFixed(2)}pt）`)
+  const dLoss = Math.abs(small.total_loss - Y160L4_TRUTH.totalLossW) / Y160L4_TRUTH.totalLossW
+  must(dLoss <= 0.15,
+    `Y160L-4 总损耗应落真值 ±15%（真值 ${Y160L4_TRUTH.totalLossW}W），实际 ${Math.round(small.total_loss)}W（差 ${(dLoss * 100).toFixed(1)}%）`)
+  return `大样本 capped=${row.efficiency}%/raw=${row.efficiency_raw}%；Y160L-4 raw=${small.efficiency_raw}% vs 真值 ${Y160L4_TRUTH.eff}%（差 ${dEff.toFixed(2)}pt），总损 ${Math.round(small.total_loss)}W vs ${Y160L4_TRUTH.totalLossW}W，capped=${small.efficiency_capped}`
 })
 
 check('matrix: P3 高速工况 —— 22000rpm 归入 2 极档（f≈367Hz）', () => {
@@ -738,9 +747,10 @@ check('estimate: 每 participating ms 级（100 组 < 100ms）', () => {
 check('index: tools/l0 可在无 DSH Runtime 下加载', () => {
   must(typeof toolsIndex.registerL0Tools === 'function', 'registerL0Tools 未导出')
   must(Array.isArray(toolsIndex.L0_TOOL_NAMES), 'L0_TOOL_NAMES 未导出')
-  must(toolsIndex.L0_TOOL_NAMES.length === 4, `当前应有 4 个工具，实际 ${toolsIndex.L0_TOOL_NAMES.length}`)
+  must(toolsIndex.L0_TOOL_NAMES.length === 5, `当前应有 5 个工具，实际 ${toolsIndex.L0_TOOL_NAMES.length}`)
   must(toolsIndex.L0_TOOL_NAMES.includes('motor_design_validate'), 'design-validate 未注册')
   must(toolsIndex.L0_TOOL_NAMES.includes('motor_l0_pipeline'), 'pipeline 聚合工具未注册')
+  must(toolsIndex.L0_TOOL_NAMES.includes('submit_resolved_case'), 'submit_resolved_case 工具未注册')
   return `可加载，工具: ${toolsIndex.L0_TOOL_NAMES.join(', ')}`
 })
 
@@ -2531,6 +2541,35 @@ check('P0-4 电流 pf/η 分档：铭牌反算校验 + PMSM 不污染 + 输入�
   must(new Set(pfs).size === pfs.length, '各档 pf 必须互异（同值=档位被错误合并，假绿灯）')
   return `15kW 线电流 ${iRms.toFixed(1)}A ≈ 铭牌 30.3A（旧 ${(off.peak_current / Math.SQRT2).toFixed(1)}A）；`
     + `PMSM 保持 0.92；显式覆盖生效；分档单调互异 ${pfs.join('/')}`
+})
+
+check('P0-3 气隙磁密 Bg 按机型+极数分档：PMSM 生效 / 异步机隔离 / 6极不外推（含 env=0 反向验证）', () => {
+  const PMSM4 = { ...Y160_BASE, motor_type: 'pmsm', poles: 4 }
+  const expect4 = AIR_GAP_FLUX_BY_POLES.pmsm[4]
+  // ① 分档命中：PMSM 4 极应取真值中位（旧恒定 0.80T 对真值高估 +10.5%，对 2 极 +21.4%）
+  const on = quickL0Estimate(PMSM4, {})
+  must(Math.abs(on.air_gap_flux_density - expect4) < 1e-9,
+    `PMSM 4 极 Bg 应命中真值分档 ${expect4}T，实际 ${on.air_gap_flux_density}T`)
+  must(on.bg_bins_caliber === 'poles_binned_truth',
+    `PMSM 4 极应标记 poles_binned_truth，实际 ${on.bg_bins_caliber}`)
+  // ② env=0 反向验证（防开关被静默失效）
+  const off = withEnv('DSH_L0_BG_BINS', '0', () => quickL0Estimate(PMSM4, {}))
+  must(Math.abs(off.air_gap_flux_density - AIR_GAP_FLUX_DEFAULT) < 1e-9,
+    `关闭开关后应回退缺省 ${AIR_GAP_FLUX_DEFAULT}T，实际 ${off.air_gap_flux_density}T`)
+  // ③ 异步机隔离 —— 本会话实证教训：S0 数据集中 80 行是 PMSM 真值（48V/1500~15000rpm），
+  //    曾被误当作异步机锚点（中位 0.717T）造成跨机型口径污染，故异步机不得套用该分档。
+  const ind = quickL0Estimate({ ...Y160_BASE, motor_type: 'induction', poles: 4 }, {})
+  must(Math.abs(ind.air_gap_flux_density - AIR_GAP_FLUX_DEFAULT) < 1e-9,
+    `异步机真值样本不足(n=2)不得套用 PMSM 分档，应保持 ${AIR_GAP_FLUX_DEFAULT}T，实际 ${ind.air_gap_flux_density}T`)
+  // ④ 未标定极数不得外推
+  const p6 = quickL0Estimate({ ...PMSM4, poles: 6 }, {})
+  must(Math.abs(p6.air_gap_flux_density - AIR_GAP_FLUX_DEFAULT) < 1e-9,
+    `6 极无真值不得外推，应回退 ${AIR_GAP_FLUX_DEFAULT}T，实际 ${p6.air_gap_flux_density}T`)
+  // ⑤ 分档表自洽（防 null/undefined 被当数值 ⇒ 静默回退成 NaN）
+  const bins = AIR_GAP_FLUX_BY_POLES.pmsm
+  must(Object.values(bins).every((v) => Number.isFinite(v)),
+    `PMSM 分档表不得含非数值：${JSON.stringify(bins)}`)
+  return `PMSM 4 极 ${expect4}T（旧 ${AIR_GAP_FLUX_DEFAULT}T）；异步机隔离保持 ${AIR_GAP_FLUX_DEFAULT}T；6 极回退；env=0 与 opts 双通道回退正常`
 })
 
 // ---------- 输出 ----------
