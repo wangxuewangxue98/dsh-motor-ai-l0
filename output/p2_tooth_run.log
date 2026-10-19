@@ -1,0 +1,519 @@
+[select] 选中 71 行
+[batch 1] 12 台 …
+[rmxprt_tools] [INFO] 变量映射已加载: D:\MotorDesign\Knowledge\rmxprt_variable_map.json
+[rmxprt_tools] [INFO] [AEDT-xlock] solve_batch(12组) 获得跨进程锁 pid=22148 (C:\Users\15389\AppData\Local\Temp\motorai_aedt.lock)
+[rmxprt_tools] [INFO] RMxprt 子进程模式就绪 (Python 3.10 venv: D:\Python310_emb\python310\python.exe, pyaedt 0.6.94)
+[rmxprt_tools] [INFO] RMxprt 批量求解 (venv 子进程模式): 共 12 组方案
+[rmxprt_tools] [INFO] [批前对账] ansysedt 活实例=0 僵尸=26 RAM 空闲=1.8710746765136719GB | 僵尸对象 26 个（进程已死仅内核对象残留, 不占 CPU/内存/license, 不影响本批, 仅重启机器可彻底清除）
+[rmxprt_tools] [INFO] [预检] 启动 RMxprt 可用性探测 (种子 5 个, 超时 180s)...
+[rmxprt_tools] [INFO] [AEDT-xlock] preflight(5组) 同进程重入（depth=2），不重复取锁
+[motor_tools] [INFO] pywin32 未安装，将使用模拟模式
+[rmxprt_tools] [INFO] 启动 venv 子进程 (监控版): D:\Python310_emb\python310\python.exe
+[rmxprt_tools] [INFO]   参数: 5 组方案, 整体超时 180s, 预检=True
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=131.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=132.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=144.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=118.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=118.0mm, poles=2)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [WARN] [4] CloseProject timed out (15s), skipping
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO] [4] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO] [5/5] Template (induction) copied to: C:\Users\15389\AppData\Local\Temp\IM_1955_234526_31524_5.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO] [5] Modifying .aedt text parameters (type: induction)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO]   P0-2 接法注入: WindingConnection=0 (Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [DEBUG]   [v4.02.97 ROTOR-Bs1] 控制截面 D_ctrl=63.59mm (Hrs0=0.153 Hrs1=0.153, 模板 Hrs0/1×k_rotor=0.153/0.153) pitch=π·D_ctrl/Q_r=7.683 k_rotor_tan=0.6846
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [DEBUG]   [fix①-IND] induction scale k(od)=0.361 k_id=0.309 k_radial=0.455 k_rotor=0.307 k_slot_w=0.372 k_rotor_tan=0.685 (stator slots 72->30, rotor slots 58->26)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [DEBUG]   [B-1] tooth=3.39mm → Bs1 残差反驱写=3.52mm 回读=3.52mm (pitch=π·66.0/30=6.91 ⇒ 齿宽回读=3.39mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [DEBUG]   [B-2] yoke 目标=10.60mm → Hs2 反驱写=15.40mm 回读=15.40mm (half=(118.0-64.8)/2=26.6 Hs0=0.36 Hs1=0.24 ⇒ T_yoke回读=10.60mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO]   .aedt text modified: 35 lines changed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO] [5] Opening project: C:\Users\15389\AppData\Local\Temp\IM_1955_234526_31524_5.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO] [5] Project opened: 'IM_1955_234526_31524_5'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO] [5] Designs in project: ('yz200-6',)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO] [5] SetActiveDesign: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO] [5] Design acquired: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO] [5] Analyzing Setup1 (timeout=120s)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:26] [INFO]     Analyze: direct call on main thread (setup='Setup1')
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:31] [INFO]     Analyze: completed on main thread
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:31] [INFO] [5] Analyze completed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:31] [INFO] [5] Solver confirmed: 'Normal completion of simulation'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:31] [INFO] [5] Reading results from .res file...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:31] [INFO]   Found .res file: C:\Users\15389\AppData\Local\Temp\IM_1955_234526_31524_5.aedtresults\yz200-6.results\DV49_SOL1_V41.MExportData\0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:31] [WARN] 槽满率物理异常: .res 实测 332.58% > 100% (物理不可能) —— 非 .res 解析/量纲问题(已取证), 根因多为上游几何喂参失衡(线径/匝数 vs 槽面积); 按真值保留并归一为 3.3258
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:31] [INFO]   read_res_file: extracted 19 values from 0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:31] [DEBUG]   P0-2 接法自检 OK: Wye (预期 Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:31] [INFO]   [geom-capture] 几何未变, 复用已抓屏 (去重 #5): D:\MotorDesign\Scripts\rmxprt_images\run_20261019_234506_31524\geom_05_20261019_234141.png
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:32] [INFO]   [rotor slot] parsed 7 segments: depth=13.15mm max_w=2.46mm opening=0.34mm
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:32] [INFO] [5] Solved OK: 24 raw, 29 mapped, 6.2s
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:32] [WARN] [5] CloseProject timed out (15s), skipping
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:32] [INFO] [5] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:32] [INFO] Quitting AEDT...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:33] [INFO] QuitApplication called
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:50] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:50] [INFO] Killed ansysedt.exe pids=[17664] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=1/27)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:51] [INFO] Cleanup: removed 1 stale lock/auto files from C:\Users\15389\AppData\Local\Temp
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:45:51] [INFO] Method C done: 5/5 success
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:46:05] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:46:05] [INFO] Killed ansysedt.exe pids=[] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=0/26)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:46:05] [INFO] Done: 5/5 success, 92.2s, method=openproject, status=ok
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:46:05] [INFO] COM uninitialized (CoUninitialize)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=131.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=132.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=144.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=118.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=118.0mm, poles=2)
+[rmxprt_tools] [INFO] [AEDT-xlock] preflight(5组) 重入释放（depth=1）
+[rmxprt_tools] [INFO] RMxprt 能力缓存更新: usable=True reason=- ttl=600s
+[rmxprt_tools] [INFO] [预检] AEDT 可用 (探测 5/5 真实结果, 耗时 94.7s), 进入正式批量求解
+[rmxprt_tools] [INFO] [RMxprt] AEDT 启动中, 最长等待约 1680s, 超时将自动降级模拟
+[rmxprt_tools] [INFO] [AEDT-xlock] 锁状态脱节（depth=1 但文件不属于本进程）⇒ 归零后重新竞争
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(12组) 获得跨进程锁 pid=22148 (C:\Users\15389\AppData\Local\Temp\motorai_aedt.lock)
+[rmxprt_tools] [INFO] 启动 venv 子进程 (监控版): D:\Python310_emb\python310\python.exe
+[rmxprt_tools] [INFO]   参数: 12 组方案, 整体超时 1680s, 预检=False
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=131.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=132.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=144.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=118.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=118.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=144.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=144.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO] [11] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO] [12/12] Template (induction) copied to: C:\Users\15389\AppData\Local\Temp\IM_92e5_234805_46556_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO] [12] Modifying .aedt text parameters (type: induction)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO]   P0-2 接法注入: WindingConnection=0 (Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [DEBUG]   [v4.02.97 ROTOR-Bs1] 控制截面 D_ctrl=147.18mm (Hrs0=0.355 Hrs1=0.355, 模板 Hrs0/1×k_rotor=0.355/0.355) pitch=π·D_ctrl/Q_r=10.509 k_rotor_tan=0.9363
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [DEBUG]   [fix①-IND] induction scale k(od)=0.749 k_id=0.712 k_radial=0.815 k_rotor=0.710 k_slot_w=0.537 k_rotor_tan=0.936 (stator slots 72->48, rotor slots 58->44)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [DEBUG]   [B-1] tooth=4.90mm → Bs1 残差反驱写=5.03mm 回读=5.03mm (pitch=π·151.7/48=9.93 ⇒ 齿宽回读=4.90mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [DEBUG]   [B-2] yoke 目标=19.10mm → Hs2 反驱写=27.53mm 回读=27.53mm (half=(245.0-149.6)/2=47.7 Hs0=0.65 Hs1=0.42 ⇒ T_yoke回读=19.10mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO]   .aedt text modified: 34 lines changed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO] [12] Opening project: C:\Users\15389\AppData\Local\Temp\IM_92e5_234805_46556_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO] [12] Project opened: 'IM_92e5_234805_46556_12'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO] [12] Designs in project: ('yz200-6',)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO] [12] SetActiveDesign: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO] [12] Design acquired: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO] [12] Analyzing Setup1 (timeout=120s)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:05] [INFO]     Analyze: direct call on main thread (setup='Setup1')
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:10] [INFO]     Analyze: completed on main thread
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:10] [INFO] [12] Analyze completed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:10] [INFO] [12] Solver confirmed: 'Normal completion of simulation'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:10] [INFO] [12] Reading results from .res file...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:10] [INFO]   Found .res file: C:\Users\15389\AppData\Local\Temp\IM_92e5_234805_46556_12.aedtresults\yz200-6.results\DV49_SOL1_V41.MExportData\0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:10] [INFO]   read_res_file: extracted 18 values from 0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:10] [DEBUG]   P0-2 接法自检 OK: Wye (预期 Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:11] [INFO]   [geom-capture] PrintWindow 无侵入 OK(rc=True, AEDT 未抢前台)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:11] [INFO]   [geom-capture] BMP→PNG 完成: geom_12_20261019_234811.png 0.4KB (scale=0.5)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:11] [INFO]   [geom-capture] 已抓屏: D:\MotorDesign\Scripts\rmxprt_images\run_20261019_234644_46556\geom_12_20261019_234811.png
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:13] [INFO]   [rotor slot] parsed 7 segments: depth=30.45mm max_w=3.37mm opening=0.47mm
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:13] [INFO] [12] Solved OK: 23 raw, 28 mapped, 8.2s
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:13] [WARN] [12] CloseProject timed out (15s), skipping
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:13] [INFO] [12] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:13] [INFO] Quitting AEDT...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:14] [INFO] QuitApplication called
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:33] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:33] [INFO] Killed ansysedt.exe pids=[26008] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=1/27)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:33] [INFO] Cleanup: removed 1 stale lock/auto files from C:\Users\15389\AppData\Local\Temp
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:33] [INFO] Method C done: 12/12 success
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:48] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:48] [INFO] Killed ansysedt.exe pids=[] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=0/26)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:48] [INFO] Done: 12/12 success, 160.3s, method=openproject, status=ok
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:48:48] [INFO] COM uninitialized (CoUninitialize)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=131.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=132.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=144.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=118.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=118.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=144.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=144.0mm, poles=2)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[rmxprt_tools] [INFO] RMxprt 能力缓存更新: usable=True reason=- ttl=600s
+[rmxprt_tools] [INFO] [AEDT-xlock] 释放锁失败（可能已被清理）: [WinError 2] 系统找不到指定的文件。: 'C:\\Users\\15389\\AppData\\Local\\Temp\\motorai_aedt.lock'
+[rmxprt_tools] [INFO] RMxprt 批量求解完成 (venv): RMxprt=12, Simulation=0, 平均耗时=8.22s
+[rmxprt_tools] [INFO] [AEDT-xlock] 释放锁失败（可能已被清理）: [WinError 2] 系统找不到指定的文件。: 'C:\\Users\\15389\\AppData\\Local\\Temp\\motorai_aedt.lock'
+  OK  P2_2.2kW_V220_id1031               Bt=1.0092 By=2.60814 Bg=0.685489 (db存量 Bt=1.51004 By=1.57267)
+  OK  P2_2.2kW_V220_id1032               Bt=0.994637 By=2.50409 Bg=0.676855 (db存量 Bt=1.46398 By=1.49541)
+  OK  P2_2.2kW_V220_id1033               Bt=1.02078 By=2.57003 Bg=0.692845 (db存量 Bt=1.45879 By=1.48339)
+  OK  P2_2.2kW_V220_id1036               Bt=1.00925 By=2.61911 Bg=0.686326 (db存量 Bt=1.50919 By=1.588)
+  OK  P2_2.2kW_V220_id1037               Bt=1.03125 By=2.61239 Bg=0.701415 (db存量 Bt=1.45239 By=1.49302)
+  OK  P2_2.2kW_V220_id1038               Bt=0.998196 By=2.57589 Bg=0.677163 (db存量 Bt=1.536 By=1.58428)
+  OK  P2_2.2kW_V220_id1040               Bt=1.00253 By=2.58433 Bg=0.680102 (db存量 Bt=1.46096 By=1.48217)
+  OK  P4_7.5kW_V380_id803                Bt=1.16123 By=1.84669 Bg=0.74167 (db存量 Bt=0.84446 By=4.8925)
+  OK  P4_7.5kW_V380_id808                Bt=1.16128 By=1.85918 Bg=0.741704 (db存量 Bt=0.856456 By=5.00752)
+  OK  P4_7.5kW_V380_id810                Bt=1.1504 By=1.83325 Bg=0.734758 (db存量 Bt=0.825216 By=4.73053)
+  OK  P4_7.5kW_V380_id902                Bt=1.1396 By=1.79468 Bg=0.727858 (db存量 Bt=0.794355 By=4.51086)
+  OK  P4_7.5kW_V380_id908                Bt=1.16407 By=1.85472 Bg=0.743483 (db存量 Bt=0.830539 By=4.75962)
+[batch 2] 12 台 …
+[rmxprt_tools] [INFO] [AEDT-xlock] solve_batch(12组) 获得跨进程锁 pid=22148 (C:\Users\15389\AppData\Local\Temp\motorai_aedt.lock)
+[rmxprt_tools] [INFO] RMxprt 批量求解 (venv 子进程模式): 共 12 组方案
+[rmxprt_tools] [INFO] [批前对账] ansysedt 活实例=0 僵尸=26 RAM 空闲=1.80853271484375GB | 僵尸对象 26 个（进程已死仅内核对象残留, 不占 CPU/内存/license, 不影响本批, 仅重启机器可彻底清除）
+[rmxprt_tools] [INFO] [RMxprt] AEDT 启动中, 最长等待约 1680s, 超时将自动降级模拟
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(12组) 同进程重入（depth=2），不重复取锁
+[rmxprt_tools] [INFO] 启动 venv 子进程 (监控版): D:\Python310_emb\python310\python.exe
+[rmxprt_tools] [INFO]   参数: 12 组方案, 整体超时 1680s, 预检=False
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=216.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=223.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [INFO] [11] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [INFO] [12/12] Template (induction) copied to: C:\Users\15389\AppData\Local\Temp\IM_b4f7_235041_46844_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [INFO] [12] Modifying .aedt text parameters (type: induction)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [INFO]   P0-2 接法注入: WindingConnection=0 (Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [DEBUG]   [v4.02.97 ROTOR-Bs1] 控制截面 D_ctrl=165.90mm (Hrs0=0.400 Hrs1=0.400, 模板 Hrs0/1×k_rotor=0.400/0.400) pitch=π·D_ctrl/Q_r=11.845 k_rotor_tan=1.0554
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [DEBUG]   [fix①-IND] induction scale k(od)=0.844 k_id=0.802 k_radial=0.919 k_rotor=0.801 k_slot_w=0.605 k_rotor_tan=1.055 (stator slots 72->48, rotor slots 58->44)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [DEBUG]   [B-1] tooth=5.51mm → Bs1 残差反驱写=5.68mm 回读=5.68mm (pitch=π·170.9/48=11.19 ⇒ 齿宽回读=5.51mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [DEBUG]   [B-2] yoke 目标=21.50mm → Hs2 反驱写=31.03mm 回读=31.03mm (half=(276.0-168.5)/2=53.8 Hs0=0.74 Hs1=0.48 ⇒ T_yoke回读=21.50mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [INFO]   .aedt text modified: 35 lines changed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [INFO] [12] Opening project: C:\Users\15389\AppData\Local\Temp\IM_b4f7_235041_46844_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [INFO] [12] Project opened: 'IM_b4f7_235041_46844_12'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [INFO] [12] Designs in project: ('yz200-6',)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:41] [INFO] [12] SetActiveDesign: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:42] [INFO] [12] Design acquired: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:42] [INFO] [12] Analyzing Setup1 (timeout=120s)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:42] [INFO]     Analyze: direct call on main thread (setup='Setup1')
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [INFO]     Analyze: completed on main thread
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [INFO] [12] Analyze completed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [INFO] [12] Solver confirmed: 'Normal completion of simulation'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [INFO] [12] Reading results from .res file...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [INFO]   Found .res file: C:\Users\15389\AppData\Local\Temp\IM_b4f7_235041_46844_12.aedtresults\yz200-6.results\DV49_SOL1_V41.MExportData\0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [INFO]   read_res_file: extracted 18 values from 0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [DEBUG]   P0-2 接法自检 OK: Wye (预期 Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [INFO]   [geom-capture] PrintWindow 无侵入 OK(rc=True, AEDT 未抢前台)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [INFO]   [geom-capture] BMP→PNG 完成: geom_12_20261019_235046.png 0.4KB (scale=0.5)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:46] [INFO]   [geom-capture] 已抓屏: D:\MotorDesign\Scripts\rmxprt_images\run_20261019_234928_46844\geom_12_20261019_235046.png
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:48] [INFO]   [rotor slot] parsed 7 segments: depth=34.32mm max_w=3.8mm opening=0.53mm
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:48] [INFO] [12] Solved OK: 23 raw, 28 mapped, 6.5s
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:48] [WARN] [12] CloseProject timed out (15s), skipping
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:48] [INFO] [12] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:48] [INFO] Quitting AEDT...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:50:49] [INFO] QuitApplication called
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:51:05] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:51:05] [INFO] Killed ansysedt.exe pids=[23220] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=1/27)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:51:05] [INFO] Cleanup: removed 1 stale lock/auto files from C:\Users\15389\AppData\Local\Temp
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:51:05] [INFO] Method C done: 12/12 success
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:51:17] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:51:17] [INFO] Killed ansysedt.exe pids=[] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=0/26)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:51:17] [INFO] Done: 12/12 success, 145.7s, method=openproject, status=ok
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:51:17] [INFO] COM uninitialized (CoUninitialize)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=216.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=223.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=245.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[rmxprt_tools] [INFO] RMxprt 能力缓存更新: usable=True reason=- ttl=600s
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(12组) 重入释放（depth=1）
+[rmxprt_tools] [INFO] RMxprt 批量求解完成 (venv): RMxprt=12, Simulation=0, 平均耗时=7.4s
+[rmxprt_tools] [INFO] [AEDT-xlock] 释放锁失败（可能已被清理）: [WinError 2] 系统找不到指定的文件。: 'C:\\Users\\15389\\AppData\\Local\\Temp\\motorai_aedt.lock'
+  OK  P4_7.5kW_V380_id910                Bt=1.1543 By=1.82971 Bg=0.737245 (db存量 Bt=0.825305 By=4.71721)
+  OK  P4_7.5kW_V380_id952                Bt=1.16123 By=1.84669 Bg=0.74167 (db存量 Bt=0.84446 By=4.8925)
+  OK  P4_7.5kW_V380_id958                Bt=1.16128 By=1.85918 Bg=0.741704 (db存量 Bt=0.856456 By=5.00752)
+  OK  P4_7.5kW_V380_id960                Bt=1.15332 By=1.82894 Bg=0.736622 (db存量 Bt=0.857916 By=5.0081)
+  OK  P4_7.5kW_V380_id1052               Bt=1.16002 By=1.84679 Bg=0.741273 (db存量 Bt=0.641558 By=1.54973)
+  OK  P4_7.5kW_V380_id1053               Bt=1.1396 By=1.79468 Bg=0.727858 (db存量 Bt=0.783059 By=1.3513)
+  OK  P4_7.5kW_V380_id1054               Bt=1.16261 By=1.83645 Bg=0.742684 (db存量 Bt=0.635055 By=1.83258)
+  OK  P4_7.5kW_V380_id1058               Bt=1.16405 By=1.85504 Bg=0.743474 (db存量 Bt=0.566676 By=2.89766)
+  OK  P4_7.5kW_V380_id1060               Bt=1.1543 By=1.82971 Bg=0.737245 (db存量 Bt=0.873053 By=1.14902)
+  OK  P4_15.0kW_V48_id771                Bt=1.22302 By=2.01461 Bg=0.78084 (db存量 Bt=1.05501 By=3.18579)
+  OK  P4_15.0kW_V48_id775                Bt=0.88267 By=1.31808 Bg=0.563543 (db存量 Bt=0.712423 By=1.95968)
+  OK  P4_15.0kW_V48_id776                Bt=1.1732 By=1.89499 Bg=0.749033 (db存量 Bt=0.990695 By=2.87348)
+[batch 3] 12 台 …
+[rmxprt_tools] [INFO] [AEDT-xlock] solve_batch(12组) 获得跨进程锁 pid=22148 (C:\Users\15389\AppData\Local\Temp\motorai_aedt.lock)
+[rmxprt_tools] [INFO] RMxprt 批量求解 (venv 子进程模式): 共 12 组方案
+[rmxprt_tools] [INFO] [批前对账] ansysedt 活实例=0 僵尸=26 RAM 空闲=1.7585029602050781GB | 僵尸对象 26 个（进程已死仅内核对象残留, 不占 CPU/内存/license, 不影响本批, 仅重启机器可彻底清除）
+[rmxprt_tools] [INFO] [RMxprt] AEDT 启动中, 最长等待约 1680s, 超时将自动降级模拟
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(12组) 同进程重入（depth=2），不重复取锁
+[rmxprt_tools] [INFO] 启动 venv 子进程 (监控版): D:\Python310_emb\python310\python.exe
+[rmxprt_tools] [INFO]   参数: 12 组方案, 整体超时 1680s, 预检=False
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=263.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=249.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=270.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=240.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO] [11] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO] [12/12] Template (induction) copied to: C:\Users\15389\AppData\Local\Temp\IM_716f_235256_24056_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO] [12] Modifying .aedt text parameters (type: induction)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO]   P0-2 接法注入: WindingConnection=0 (Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [DEBUG]   [v4.02.97 ROTOR-Bs1] 控制截面 D_ctrl=140.84mm (Hrs0=0.340 Hrs1=0.340, 模板 Hrs0/1×k_rotor=0.340/0.340) pitch=π·D_ctrl/Q_r=10.056 k_rotor_tan=0.8960
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [DEBUG]   [fix①-IND] induction scale k(od)=0.719 k_id=0.682 k_radial=0.785 k_rotor=0.680 k_slot_w=0.514 k_rotor_tan=0.896 (stator slots 72->48, rotor slots 58->44)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [DEBUG]   [B-1] tooth=4.69mm → Bs1 残差反驱写=4.82mm 回读=4.82mm (pitch=π·145.3/48=9.51 ⇒ 齿宽回读=4.69mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [DEBUG]   [B-2] yoke 目标=18.40mm → Hs2 反驱写=26.46mm 回读=26.46mm (half=(235.0-143.2)/2=45.9 Hs0=0.63 Hs1=0.41 ⇒ T_yoke回读=18.40mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO]   .aedt text modified: 34 lines changed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO] [12] Opening project: C:\Users\15389\AppData\Local\Temp\IM_716f_235256_24056_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO] [12] Project opened: 'IM_716f_235256_24056_12'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO] [12] Designs in project: ('yz200-6',)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO] [12] SetActiveDesign: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO] [12] Design acquired: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO] [12] Analyzing Setup1 (timeout=120s)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:52:56] [INFO]     Analyze: direct call on main thread (setup='Setup1')
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [INFO]     Analyze: completed on main thread
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [INFO] [12] Analyze completed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [INFO] [12] Solver confirmed: 'Normal completion of simulation'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [INFO] [12] Reading results from .res file...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [INFO]   Found .res file: C:\Users\15389\AppData\Local\Temp\IM_716f_235256_24056_12.aedtresults\yz200-6.results\DV49_SOL1_V41.MExportData\0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [INFO]   read_res_file: extracted 18 values from 0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [DEBUG]   P0-2 接法自检 OK: Wye (预期 Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [INFO]   [geom-capture] PrintWindow 无侵入 OK(rc=True, AEDT 未抢前台)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [INFO]   [geom-capture] BMP→PNG 完成: geom_12_20261019_235301.png 0.4KB (scale=0.5)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:01] [INFO]   [geom-capture] 已抓屏: D:\MotorDesign\Scripts\rmxprt_images\run_20261019_235150_24056\geom_12_20261019_235301.png
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:03] [INFO]   [rotor slot] parsed 7 segments: depth=29.13mm max_w=3.23mm opening=0.45mm
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:03] [INFO] [12] Solved OK: 23 raw, 28 mapped, 6.5s
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:03] [WARN] [12] CloseProject timed out (15s), skipping
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:03] [INFO] [12] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:03] [INFO] Quitting AEDT...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:04] [INFO] QuitApplication called
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:19] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:19] [INFO] Killed ansysedt.exe pids=[34524] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=1/27)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:19] [INFO] Cleanup: removed 1 stale lock/auto files from C:\Users\15389\AppData\Local\Temp
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:19] [INFO] Method C done: 12/12 success
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:31] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:31] [INFO] Killed ansysedt.exe pids=[] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=0/26)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:31] [INFO] Done: 12/12 success, 132.1s, method=openproject, status=ok
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:53:31] [INFO] COM uninitialized (CoUninitialize)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=263.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=249.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=276.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=270.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=240.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[RMxprt] 效率诚实化: 输出功率为0 → efficiency=0.0% (OD=235.0mm, poles=4)
+[rmxprt_tools] [INFO] RMxprt 能力缓存更新: usable=True reason=- ttl=600s
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(12组) 重入释放（depth=1）
+[rmxprt_tools] [INFO] RMxprt 批量求解完成 (venv): RMxprt=12, Simulation=0, 平均耗时=6.74s
+[rmxprt_tools] [INFO] [AEDT-xlock] 释放锁失败（可能已被清理）: [WinError 2] 系统找不到指定的文件。: 'C:\\Users\\15389\\AppData\\Local\\Temp\\motorai_aedt.lock'
+  OK  P4_15.0kW_V48_id777                Bt=1.24695 By=2.06768 Bg=0.797062 (db存量 Bt=0.955716 By=9.807)
+  OK  P4_15.0kW_V48_id779                Bt=1.12457 By=1.74202 Bg=0.718834 (db存量 Bt=0.769671 By=7.18947)
+  OK  P4_15.0kW_V48_id1021               Bt=0.75322 By=1.1204 Bg=0.480895 (db存量 Bt=1.50151 By=1.5188)
+  OK  P4_15.0kW_V48_id1022               Bt=0.740315 By=1.10043 Bg=0.472621 (db存量 Bt=1.51785 By=1.53695)
+  OK  P4_15.0kW_V48_id1023               Bt=0.778287 By=1.15844 Bg=0.49768 (db存量 Bt=1.51354 By=1.53486)
+  OK  P4_15.0kW_V48_id1024               Bt=0.881552 By=1.31483 Bg=0.562829 (db存量 Bt=1.47689 By=1.49389)
+  OK  P4_15.0kW_V48_id1025               Bt=1.17706 By=1.89152 Bg=0.751499 (db存量 Bt=1.51974 By=1.52859)
+  OK  P4_15.0kW_V48_id1026               Bt=0.772095 By=1.1417 Bg=0.493531 (db存量 Bt=1.51624 By=1.54014)
+  OK  P4_15.0kW_V48_id1027               Bt=0.888176 By=1.31953 Bg=0.567693 (db存量 Bt=1.47605 By=1.49381)
+  OK  P4_15.0kW_V48_id1028               Bt=0.823137 By=1.2269 Bg=0.525112 (db存量 Bt=1.50779 By=1.53058)
+  OK  P4_15.0kW_V48_id1029               Bt=1.12255 By=1.74672 Bg=0.717548 (db存量 Bt=1.55274 By=1.57115)
+  OK  P4_15.0kW_V48_id1030               Bt=1.02453 By=1.53275 Bg=0.65489 (db存量 Bt=1.45554 By=1.47848)
+[batch 4] 12 台 …
+[rmxprt_tools] [INFO] [AEDT-xlock] solve_batch(12组) 获得跨进程锁 pid=22148 (C:\Users\15389\AppData\Local\Temp\motorai_aedt.lock)
+[rmxprt_tools] [INFO] RMxprt 批量求解 (venv 子进程模式): 共 12 组方案
+[rmxprt_tools] [INFO] [批前对账] ansysedt 活实例=0 僵尸=26 RAM 空闲=1.8179283142089844GB | 僵尸对象 26 个（进程已死仅内核对象残留, 不占 CPU/内存/license, 不影响本批, 仅重启机器可彻底清除）
+[rmxprt_tools] [INFO] [RMxprt] AEDT 启动中, 最长等待约 1680s, 超时将自动降级模拟
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(12组) 同进程重入（depth=2），不重复取锁
+[rmxprt_tools] [INFO] 启动 venv 子进程 (监控版): D:\Python310_emb\python310\python.exe
+[rmxprt_tools] [INFO]   参数: 12 组方案, 整体超时 1680s, 预检=False
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [INFO] [11] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [INFO] [12/12] Template (induction) copied to: C:\Users\15389\AppData\Local\Temp\IM_1790_235527_31820_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [INFO] [12] Modifying .aedt text parameters (type: induction)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [INFO]   P0-2 接法注入: WindingConnection=0 (Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [DEBUG]   [v4.02.97 ROTOR-Bs1] 控制截面 D_ctrl=255.93mm (Hrs0=0.618 Hrs1=0.618, 模板 Hrs0/1×k_rotor=0.618/0.618) pitch=π·D_ctrl/Q_r=18.273 k_rotor_tan=1.6282
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [DEBUG]   [fix①-IND] induction scale k(od)=1.303 k_id=1.238 k_radial=1.419 k_rotor=1.235 k_slot_w=0.934 k_rotor_tan=1.628 (stator slots 72->48, rotor slots 58->44)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [DEBUG]   [B-1] tooth=8.51mm → Bs1 残差反驱写=8.75mm 回读=8.75mm (pitch=π·263.8/48=17.26 ⇒ 齿宽回读=8.51mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [DEBUG]   [B-2] yoke 目标=33.20mm → Hs2 反驱写=47.92mm 回读=47.92mm (half=(426.0-260.0)/2=83.0 Hs0=1.14 Hs1=0.74 ⇒ T_yoke回读=33.20mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [INFO]   .aedt text modified: 34 lines changed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [INFO] [12] Opening project: C:\Users\15389\AppData\Local\Temp\IM_1790_235527_31820_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [INFO] [12] Project opened: 'IM_1790_235527_31820_12'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:27] [INFO] [12] Designs in project: ('yz200-6',)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:28] [INFO] [12] SetActiveDesign: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:28] [INFO] [12] Design acquired: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:28] [INFO] [12] Analyzing Setup1 (timeout=120s)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:28] [INFO]     Analyze: direct call on main thread (setup='Setup1')
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:33] [INFO]     Analyze: completed on main thread
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:33] [INFO] [12] Analyze completed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:33] [INFO] [12] Solver confirmed: 'Normal completion of simulation'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:33] [INFO] [12] Reading results from .res file...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:33] [INFO]   Found .res file: C:\Users\15389\AppData\Local\Temp\IM_1790_235527_31820_12.aedtresults\yz200-6.results\DV49_SOL1_V41.MExportData\0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:33] [INFO]   read_res_file: extracted 21 values from 0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:33] [DEBUG]   P0-2 接法自检 OK: Wye (预期 Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:33] [INFO]   [geom-capture] PrintWindow 无侵入 OK(rc=True, AEDT 未抢前台)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:33] [INFO]   [geom-capture] BMP→PNG 完成: geom_12_20261019_235533.png 0.4KB (scale=0.5)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:34] [INFO]   [geom-capture] 已抓屏: D:\MotorDesign\Scripts\rmxprt_images\run_20261019_235407_31820\geom_12_20261019_235533.png
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:35] [INFO]   [rotor slot] parsed 7 segments: depth=52.94mm max_w=5.86mm opening=0.81mm
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:35] [INFO] [12] Solved OK: 26 raw, 28 mapped, 8.2s
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:35] [WARN] [12] CloseProject timed out (15s), skipping
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:35] [INFO] [12] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:35] [INFO] Quitting AEDT...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:36] [INFO] QuitApplication called
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:54] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:54] [INFO] Killed ansysedt.exe pids=[17840] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=1/27)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:54] [INFO] Cleanup: removed 1 stale lock/auto files from C:\Users\15389\AppData\Local\Temp
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:55:54] [INFO] Method C done: 12/12 success
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:56:08] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:56:08] [INFO] Killed ansysedt.exe pids=[] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=0/26)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:56:08] [INFO] Done: 12/12 success, 153.2s, method=openproject, status=ok
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:56:08] [INFO] COM uninitialized (CoUninitialize)
+[rmxprt_tools] [INFO] RMxprt 能力缓存更新: usable=True reason=- ttl=600s
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(12组) 重入释放（depth=1）
+[rmxprt_tools] [INFO] RMxprt 批量求解完成 (venv): RMxprt=12, Simulation=0, 平均耗时=8.1s
+[rmxprt_tools] [INFO] [AEDT-xlock] 释放锁失败（可能已被清理）: [WinError 2] 系统找不到指定的文件。: 'C:\\Users\\15389\\AppData\\Local\\Temp\\motorai_aedt.lock'
+  OK  P4_55.0kW_V660_id791               Bt=1.13028 By=1.78027 Bg=0.722124 (db存量 Bt=1.05129 By=1.36466)
+  OK  P4_55.0kW_V660_id792               Bt=1.12093 By=1.80058 Bg=0.710564 (db存量 Bt=1.04558 By=1.37645)
+  OK  P4_55.0kW_V660_id793               Bt=1.08502 By=1.6672 Bg=0.693641 (db存量 Bt=1.01342 By=1.29492)
+  OK  P4_55.0kW_V660_id794               Bt=1.10677 By=1.72184 Bg=0.7071 (db存量 Bt=0.910716 By=1.55521)
+  OK  P4_55.0kW_V660_id795               Bt=1.12965 By=1.76024 Bg=0.721532 (db存量 Bt=0.915389 By=1.36443)
+  OK  P4_55.0kW_V660_id796               Bt=1.09216 By=1.68403 Bg=0.697532 (db存量 Bt=1.05369 By=1.63146)
+  OK  P4_55.0kW_V660_id797               Bt=1.12176 By=1.7526 Bg=0.716433 (db存量 Bt=0.655583 By=2.34957)
+  OK  P4_55.0kW_V660_id798               Bt=1.10615 By=1.71531 Bg=0.706538 (db存量 Bt=0.636957 By=2.05364)
+  OK  P4_55.0kW_V660_id891               Bt=1.06903 By=1.63682 Bg=0.682987 (db存量 Bt=0.990443 By=1.2831)
+  OK  P4_55.0kW_V660_id892               Bt=1.10438 By=1.71434 Bg=0.705388 (db存量 Bt=0.982351 By=1.14953)
+  OK  P4_55.0kW_V660_id893               Bt=1.06829 By=1.63233 Bg=0.682733 (db存量 Bt=0.889265 By=1.63419)
+  OK  P4_55.0kW_V660_id894               Bt=1.11004 By=1.72648 Bg=0.709192 (db存量 Bt=0.976812 By=1.55292)
+[batch 5] 12 台 …
+[rmxprt_tools] [INFO] [AEDT-xlock] solve_batch(12组) 获得跨进程锁 pid=22148 (C:\Users\15389\AppData\Local\Temp\motorai_aedt.lock)
+[rmxprt_tools] [INFO] RMxprt 批量求解 (venv 子进程模式): 共 12 组方案
+[rmxprt_tools] [INFO] [批前对账] ansysedt 活实例=0 僵尸=26 RAM 空闲=1.9474639892578125GB | 僵尸对象 26 个（进程已死仅内核对象残留, 不占 CPU/内存/license, 不影响本批, 仅重启机器可彻底清除）
+[rmxprt_tools] [INFO] [RMxprt] AEDT 启动中, 最长等待约 1680s, 超时将自动降级模拟
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(12组) 同进程重入（depth=2），不重复取锁
+[rmxprt_tools] [INFO] 启动 venv 子进程 (监控版): D:\Python310_emb\python310\python.exe
+[rmxprt_tools] [INFO]   参数: 12 组方案, 整体超时 1680s, 预检=False
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO] [11] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO] [12/12] Template (induction) copied to: C:\Users\15389\AppData\Local\Temp\IM_513b_235813_23972_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO] [12] Modifying .aedt text parameters (type: induction)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO]   P0-2 接法注入: WindingConnection=0 (Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [DEBUG]   [v4.02.97 ROTOR-Bs1] 控制截面 D_ctrl=217.60mm (Hrs0=0.525 Hrs1=0.525, 模板 Hrs0/1×k_rotor=0.525/0.525) pitch=π·D_ctrl/Q_r=15.537 k_rotor_tan=1.3843
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [DEBUG]   [fix①-IND] induction scale k(od)=1.107 k_id=1.052 k_radial=1.205 k_rotor=1.050 k_slot_w=0.794 k_rotor_tan=1.384 (stator slots 72->48, rotor slots 58->44)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [DEBUG]   [B-1] tooth=7.23mm → Bs1 残差反驱写=7.44mm 回读=7.44mm (pitch=π·224.2/48=14.67 ⇒ 齿宽回读=7.23mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [DEBUG]   [B-2] yoke 目标=28.20mm → Hs2 反驱写=40.71mm 回读=40.71mm (half=(362.0-221.0)/2=70.5 Hs0=0.96 Hs1=0.63 ⇒ T_yoke回读=28.20mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO]   .aedt text modified: 34 lines changed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO] [12] Opening project: C:\Users\15389\AppData\Local\Temp\IM_513b_235813_23972_12.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO] [12] Project opened: 'IM_513b_235813_23972_12'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO] [12] Designs in project: ('yz200-6',)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO] [12] SetActiveDesign: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO] [12] Design acquired: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO] [12] Analyzing Setup1 (timeout=120s)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:13] [INFO]     Analyze: direct call on main thread (setup='Setup1')
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [INFO]     Analyze: completed on main thread
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [INFO] [12] Analyze completed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [INFO] [12] Solver confirmed: 'Normal completion of simulation'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [INFO] [12] Reading results from .res file...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [INFO]   Found .res file: C:\Users\15389\AppData\Local\Temp\IM_513b_235813_23972_12.aedtresults\yz200-6.results\DV49_SOL1_V41.MExportData\0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [INFO]   read_res_file: extracted 21 values from 0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [DEBUG]   P0-2 接法自检 OK: Wye (预期 Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [INFO]   [geom-capture] PrintWindow 无侵入 OK(rc=True, AEDT 未抢前台)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [INFO]   [geom-capture] BMP→PNG 完成: geom_12_20261019_235819.png 0.4KB (scale=0.5)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:19] [INFO]   [geom-capture] 已抓屏: D:\MotorDesign\Scripts\rmxprt_images\run_20261019_235647_23972\geom_12_20261019_235819.png
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:21] [INFO]   [rotor slot] parsed 7 segments: depth=45.01mm max_w=4.98mm opening=0.69mm
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:21] [INFO] [12] Solved OK: 26 raw, 28 mapped, 7.8s
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:21] [WARN] [12] CloseProject timed out (15s), skipping
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:21] [INFO] [12] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:21] [INFO] Quitting AEDT...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:22] [INFO] QuitApplication called
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:41] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:41] [INFO] Killed ansysedt.exe pids=[10860] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=1/27)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:42] [INFO] Cleanup: removed 1 stale lock/auto files from C:\Users\15389\AppData\Local\Temp
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:42] [INFO] Method C done: 12/12 success
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:55] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:55] [INFO] Killed ansysedt.exe pids=[] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=0/26)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:55] [INFO] Done: 12/12 success, 164.6s, method=openproject, status=ok
+[rmxprt_tools] [INFO] [venv] [venv_worker] [23:58:55] [INFO] COM uninitialized (CoUninitialize)
+[rmxprt_tools] [INFO] RMxprt 能力缓存更新: usable=True reason=- ttl=600s
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(12组) 重入释放（depth=1）
+[rmxprt_tools] [INFO] RMxprt 批量求解完成 (venv): RMxprt=12, Simulation=0, 平均耗时=8.53s
+[rmxprt_tools] [INFO] [AEDT-xlock] 释放锁失败（可能已被清理）: [WinError 2] 系统找不到指定的文件。: 'C:\\Users\\15389\\AppData\\Local\\Temp\\motorai_aedt.lock'
+  OK  P4_55.0kW_V660_id895               Bt=1.12965 By=1.76024 Bg=0.721532 (db存量 Bt=0.915389 By=1.36443)
+  OK  P4_55.0kW_V660_id896               Bt=1.11498 By=1.73891 Bg=0.712107 (db存量 Bt=1.05353 By=1.62906)
+  OK  P4_55.0kW_V660_id897               Bt=1.12009 By=1.75538 Bg=0.715368 (db存量 Bt=0.661255 By=2.37151)
+  OK  P4_55.0kW_V660_id898               Bt=1.12819 By=1.77791 Bg=0.720597 (db存量 Bt=1.06212 By=1.24572)
+  OK  P4_55.0kW_V660_id900               Bt=1.13205 By=1.79675 Bg=0.723063 (db存量 Bt=1.0611 By=1.2449)
+  OK  P4_55.0kW_V660_id941               Bt=1.1286 By=1.78292 Bg=0.721048 (db存量 Bt=1.05158 By=1.36605)
+  OK  P4_55.0kW_V660_id942               Bt=1.09789 By=1.70282 Bg=0.701638 (db存量 Bt=0.88483 By=1.24706)
+  OK  P4_55.0kW_V660_id943               Bt=1.07044 By=1.63906 Bg=0.68381 (db存量 Bt=0.994951 By=1.27818)
+  OK  P4_55.0kW_V660_id944               Bt=1.10677 By=1.72184 Bg=0.7071 (db存量 Bt=0.910716 By=1.55521)
+  OK  P4_55.0kW_V660_id945               Bt=0.594785 By=0.908338 Bg=0.379904 (db存量 Bt=0.917241 By=1.36783)
+  OK  P4_55.0kW_V660_id946               Bt=1.09216 By=1.68403 Bg=0.697532 (db存量 Bt=1.05369 By=1.63146)
+  OK  P4_55.0kW_V660_id947               Bt=1.12009 By=1.75538 Bg=0.715368 (db存量 Bt=0.661255 By=2.37151)
+[batch 6] 11 台 …
+[rmxprt_tools] [INFO] [AEDT-xlock] solve_batch(11组) 获得跨进程锁 pid=22148 (C:\Users\15389\AppData\Local\Temp\motorai_aedt.lock)
+[rmxprt_tools] [INFO] RMxprt 批量求解 (venv 子进程模式): 共 11 组方案
+[rmxprt_tools] [WARN] [批前对账] ansysedt 活实例=0 僵尸=26 RAM 空闲=1.4465103149414062GB | 僵尸对象 26 个（进程已死仅内核对象残留, 不占 CPU/内存/license, 不影响本批, 仅重启机器可彻底清除）；空闲内存 1.4GB < cc=1×1.5GB 估算需求, 分片 OOM 边际, 建议降 cc 或先回收
+[rmxprt_tools] [INFO] [RMxprt] AEDT 启动中, 最长等待约 1550s, 超时将自动降级模拟
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(11组) 同进程重入（depth=2），不重复取锁
+[rmxprt_tools] [INFO] 启动 venv 子进程 (监控版): D:\Python310_emb\python310\python.exe
+[rmxprt_tools] [INFO]   参数: 11 组方案, 整体超时 1550s, 预检=False
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO] [10] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO] [11/11] Template (induction) copied to: C:\Users\15389\AppData\Local\Temp\IM_b97d_000045_33248_11.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO] [11] Modifying .aedt text parameters (type: induction)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO]   P0-2 接法注入: WindingConnection=0 (Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [DEBUG]   [v4.02.97 ROTOR-Bs1] 控制截面 D_ctrl=294.46mm (Hrs0=0.711 Hrs1=0.711, 模板 Hrs0/1×k_rotor=0.711/0.711) pitch=π·D_ctrl/Q_r=21.024 k_rotor_tan=1.8733
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [DEBUG]   [fix①-IND] induction scale k(od)=1.498 k_id=1.424 k_radial=1.632 k_rotor=1.421 k_slot_w=1.074 k_rotor_tan=1.873 (stator slots 72->48, rotor slots 58->44)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [DEBUG]   [B-1] tooth=9.78mm → Bs1 残差反驱写=10.07mm 回读=10.07mm (pitch=π·303.3/48=19.85 ⇒ 齿宽回读=9.78mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [DEBUG]   [B-2] yoke 目标=38.20mm → Hs2 反驱写=55.14mm 回读=55.14mm (half=(490.0-299.0)/2=95.5 Hs0=1.31 Hs1=0.85 ⇒ T_yoke回读=38.20mm)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO]   .aedt text modified: 34 lines changed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO] [11] Opening project: C:\Users\15389\AppData\Local\Temp\IM_b97d_000045_33248_11.aedt
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO] [11] Project opened: 'IM_b97d_000045_33248_11'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO] [11] Designs in project: ('yz200-6',)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO] [11] SetActiveDesign: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO] [11] Design acquired: 'yz200-6'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO] [11] Analyzing Setup1 (timeout=120s)...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:45] [INFO]     Analyze: direct call on main thread (setup='Setup1')
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [INFO]     Analyze: completed on main thread
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [INFO] [11] Analyze completed
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [INFO] [11] Solver confirmed: 'Normal completion of simulation'
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [INFO] [11] Reading results from .res file...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [INFO]   Found .res file: C:\Users\15389\AppData\Local\Temp\IM_b97d_000045_33248_11.aedtresults\yz200-6.results\DV49_SOL1_V41.MExportData\0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [INFO]   read_res_file: extracted 21 values from 0.res
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [DEBUG]   P0-2 接法自检 OK: Wye (预期 Wye)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [INFO]   [geom-capture] PrintWindow 无侵入 OK(rc=True, AEDT 未抢前台)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [INFO]   [geom-capture] BMP→PNG 完成: geom_11_20261020_000051.png 0.4KB (scale=0.5)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:51] [INFO]   [geom-capture] 已抓屏: D:\MotorDesign\Scripts\rmxprt_images\run_20261019_235935_33248\geom_11_20261020_000051.png
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:53] [INFO]   [rotor slot] parsed 7 segments: depth=60.91mm max_w=6.74mm opening=0.94mm
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:53] [INFO] [11] Solved OK: 26 raw, 28 mapped, 7.9s
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:53] [WARN] [11] CloseProject timed out (15s), skipping
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:53] [INFO] [11] Cleaned up 2 project files/dirs
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:53] [INFO] Quitting AEDT...
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:00:54] [INFO] QuitApplication called
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:01:10] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:01:10] [INFO] Killed ansysedt.exe pids=[15568] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=1/27)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:01:10] [INFO] Cleanup: removed 1 stale lock/auto files from C:\Users\15389\AppData\Local\Temp
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:01:10] [INFO] Method C done: 11/11 success
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:01:26] [INFO] P2 校验: ansysedt pids=[5848, 9812, 13840, 16932, 22060, 27044, 29500, 32740, 32988, 33476, 33724, 33740, 35032, 35048, 35292, 36592, 36924, 37016, 37496, 39280, 39836, 41628, 43316, 44004, 44132, 44416] 为僵尸对象(本体已死仅内核对象残留, 零 CPU/内存/license, 无实质影响; 重启机器可彻底清除)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:01:26] [INFO] Killed ansysedt.exe pids=[] (scoped: 本批差集+孤儿回收; 保留基线 []; 实际退出=0/26)
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:01:26] [INFO] Done: 11/11 success, 146.8s, method=openproject, status=ok
+[rmxprt_tools] [INFO] [venv] [venv_worker] [00:01:26] [INFO] COM uninitialized (CoUninitialize)
+[rmxprt_tools] [INFO] RMxprt 能力缓存更新: usable=True reason=- ttl=600s
+[rmxprt_tools] [INFO] [AEDT-xlock] batch(11组) 重入释放（depth=1）
+[rmxprt_tools] [INFO] RMxprt 批量求解完成 (venv): RMxprt=11, Simulation=0, 平均耗时=7.95s
+[rmxprt_tools] [INFO] [AEDT-xlock] 释放锁失败（可能已被清理）: [WinError 2] 系统找不到指定的文件。: 'C:\\Users\\15389\\AppData\\Local\\Temp\\motorai_aedt.lock'
+  OK  P4_55.0kW_V660_id948               Bt=0.577166 By=0.881309 Bg=0.368853 (db存量 Bt=0.8976 By=1.18095)
+  OK  P4_55.0kW_V660_id950               Bt=1.10288 By=1.71733 Bg=0.704428 (db存量 Bt=0.987422 By=1.15634)
+  OK  P4_55.0kW_V660_id1041              Bt=1.06903 By=1.63682 Bg=0.682987 (db存量 Bt=0.949102 By=1.31449)
+  OK  P4_55.0kW_V660_id1042              Bt=1.1249 By=1.76667 Bg=0.718369 (db存量 Bt=1.01269 By=1.49328)
+  OK  P4_55.0kW_V660_id1043              Bt=1.09789 By=1.70282 Bg=0.701638 (db存量 Bt=0.88483 By=1.24706)
+  OK  P4_55.0kW_V660_id1044              Bt=1.1056 By=1.72431 Bg=0.706356 (db存量 Bt=0.911138 By=1.55703)
+  OK  P4_55.0kW_V660_id1045              Bt=1.13568 By=1.80794 Bg=0.72557 (db存量 Bt=1.10654 By=1.2143)
+  OK  P4_55.0kW_V660_id1046              Bt=1.11688 By=1.73943 Bg=0.71345 (db存量 Bt=0.788608 By=1.96609)
+  OK  P4_55.0kW_V660_id1047              Bt=1.12176 By=1.7526 Bg=0.716433 (db存量 Bt=0.655583 By=2.34957)
+  OK  P4_55.0kW_V660_id1048              Bt=0.577166 By=0.881309 Bg=0.368853 (db存量 Bt=0.8976 By=1.18095)
+  OK  P4_55.0kW_V660_id1050              Bt=1.13298 By=1.79237 Bg=0.723657 (db存量 Bt=1.06062 By=1.24365)
+
+[done] 总 71 台，真值可用 71 台，用时 1015.5s → output/p2_tooth_truth.json
