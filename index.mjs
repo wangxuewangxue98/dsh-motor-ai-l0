@@ -51,6 +51,23 @@ function readPluginVersion() {
 
 const PLUGIN_VERSION = readPluginVersion()
 
+/**
+ * 统一 endpoint 语义（P1-A 回流激活）：显式配置优先；为空则由 commerceBackendUrl
+ * 派生官方接收端路径。开关（telemetryEnabled / designExperienceUpload /
+ * issueResolvedEnabled）仍默认 false 保持 opt-in 合规——本函数只解决「用户开了开关
+ * 却没填端点时回流静默失效」的断链，让开关打开即指向官方接收端。
+ * @param {object} config 插件配置
+ * @param {string} path 接收端路径（如 '/api/dsh/telemetry'）
+ * @param {string} explicitKey 显式端点的 config 键名
+ * @returns {string} 可用端点；无法派生时返回 ''
+ */
+function deriveEndpoint(config, path, explicitKey) {
+  const explicit = String(config?.[explicitKey] || '').trim()
+  if (explicit) return explicit
+  const backend = String(config?.commerceBackendUrl || '').trim()
+  return backend ? backend.replace(/\/+$/, '') + path : ''
+}
+
 /** 注入依赖：tools（工具注册能力） */
 export const inject = ['tools']
 
@@ -96,7 +113,7 @@ export const Config = Schema.object({
   telemetryEnabled: Schema.boolean().default(false)
     .description('脱敏聚合指标回传开关（默认 false；且须配合 telemetryEndpoint 才真正生效）。开启后仅上报「按工具聚合的调用次数/成败/耗时分布/规模总和」，绝不包含设计参数、结果明细、提示词、工作目录、密钥'),
   telemetryEndpoint: Schema.string().default('')
-    .description('回传目标 URL（POST JSON）。为空 = 不启用回传。需与 telemetryEnabled=true 同时满足才会上报；推荐先配到管理端 /api/admin/dsh-plugins/<id>/usage-report 或自建端点'),
+    .description('回传目标 URL（POST JSON）。为空 = 自动回退 commerceBackendUrl + /api/dsh/telemetry（P1-A 统一端点语义）；需与 telemetryEnabled=true 同时满足才会上报'),
   telemetryBatchSize: Schema.number().default(50)
     .description('单次回传最多携带的用量记录条数（分批推进 offset，失败不推进、下批重报）'),
   telemetryIntervalSec: Schema.number().default(300)
@@ -110,7 +127,7 @@ export const Config = Schema.object({
   designExperienceUpload: Schema.boolean().default(false)
     .description('设计经验脱敏回传开关（默认 false；且须配合 experienceEndpoint 才真正生效）。开启后每次 L0 估算把脱敏的规格/几何/结论裁成 design_exp 样本落本地 experience.jsonl，再增量回传。绝不包含账号/路径/提示词/密钥等身份信息'),
   experienceEndpoint: Schema.string().default('')
-    .description('设计经验回传目标 URL（POST JSON）。为空则回退复用 telemetryEndpoint；二者都空 = 不启用。推荐配到管理端 /api/admin/dsh-plugins/<id>/experience-report'),
+    .description('设计经验回传目标 URL（POST JSON）。为空则回退 telemetryEndpoint，再为空则自动回退 commerceBackendUrl + /api/dsh/experience（P1-A 统一端点语义）'),
   experienceBatchSize: Schema.number().default(200)
     .description('单次经验回传最多携带的 design_exp 条数（分批推进 offset，失败不推进、下批重报）'),
 
@@ -160,11 +177,14 @@ export async function apply(ctx, config) {
   // 4c. 已解决问题回流（知识积累闭环，P1-B；由 submit_resolved_case 工具即时触发）
   setupIssueResolved(ctx, config)
 
-  const telemetryOn = config.telemetryEnabled === true && !!String(config.telemetryEndpoint || '').trim()
-  const expOn = config.designExperienceUpload === true
-    && !!String(config.experienceEndpoint || config.telemetryEndpoint || '').trim()
-  const issOn = config.issueResolvedEnabled === true
-    && !!String(config.issueResolvedEndpoint || config.commerceBackendUrl || '').trim()
+  // P1-A 统一端点语义：显式配置优先，空则由 commerceBackendUrl 派生（开关仍 opt-in）
+  const telEp = deriveEndpoint(config, '/api/dsh/telemetry', 'telemetryEndpoint')
+  const expEp = String(config.experienceEndpoint || '').trim() || telEp
+  const issEp = String(config.issueResolvedEndpoint || '').trim()
+    || deriveEndpoint(config, '/api/dsh/issue-resolved', 'issueResolvedEndpoint')
+  const telemetryOn = config.telemetryEnabled === true && !!telEp
+  const expOn = config.designExperienceUpload === true && !!expEp
+  const issOn = config.issueResolvedEnabled === true && !!issEp
   ctx.logger?.info?.(
     `[dsh-motor-ai-l0] L0 已加载，模式: ${config.l0Mode}` +
     ` | 效率封顶 ${config.efficiencyCap}%` +
@@ -173,9 +193,9 @@ export async function apply(ctx, config) {
     ` | 工具 ${tools.join(',')}` +
     ` | 付费等级 ${tierOf(config.level)}` +
     ` | 用量日志 ${config.usageLog === false ? 'off' : 'on'}` +
-    ` | 脱敏回传 ${telemetryOn ? `on → ${String(config.telemetryEndpoint).slice(0, 40)}` : 'off'}` +
-    ` | 设计经验回传 ${expOn ? `on → ${String(config.experienceEndpoint || config.telemetryEndpoint).slice(0, 40)}` : 'off'}` +
-    ` | 已解决问题回流 ${issOn ? `on → ${String(config.issueResolvedEndpoint || config.commerceBackendUrl + '/api/dsh/issue-resolved').slice(0, 40)}` : 'off'}`
+    ` | 脱敏回传 ${telemetryOn ? `on → ${telEp.slice(0, 40)}` : 'off'}` +
+    ` | 设计经验回传 ${expOn ? `on → ${expEp.slice(0, 40)}` : 'off'}` +
+    ` | 已解决问题回流 ${issOn ? `on → ${issEp.slice(0, 40)}` : 'off'}`
   )
 }
 
@@ -187,12 +207,16 @@ export async function apply(ctx, config) {
  */
 async function setupTelemetry(ctx, config) {
   const enabled = config.telemetryEnabled === true
-  const endpoint = String(config.telemetryEndpoint || '').trim()
+  // P1-A：telemetryEndpoint 为空时自动回退 commerceBackendUrl 派生的官方接收端
+  const endpoint = deriveEndpoint(config, '/api/dsh/telemetry', 'telemetryEndpoint')
   if (!enabled || !endpoint) return
 
   const { reportTelemetry, attachSessionTelemetry } = await import('@wangxue98/dsh-motor-ai-core')
   // 版本取自 package.json（见 PLUGIN_VERSION），不再读 config.pluginVersion（恒空，P2 缺陷）
   const version = PLUGIN_VERSION
+  // core 的 reportTelemetry 自解析 config.telemetryEndpoint（为空即 disabled）；
+  // 派生端点时注入 effConfig，让 core 看到与门禁一致的可用端点
+  const effConfig = String(config.telemetryEndpoint || '').trim() ? config : { ...config, telemetryEndpoint: endpoint }
 
   /**
    * 单次回传：endpoint POST（主通道）成功后，把同一份聚合 payload 也挂到
@@ -200,7 +224,7 @@ async function setupTelemetry(ctx, config) {
    */
   async function flushOnce() {
     try {
-      const res = await reportTelemetry(config, { pluginVersion: version })
+      const res = await reportTelemetry(effConfig, { pluginVersion: version })
       if (res.reported && res.payload && config.sessionTelemetry !== 'off') {
         attachSessionTelemetry(ctx, res.payload)
       }
@@ -232,14 +256,20 @@ async function setupTelemetry(ctx, config) {
  */
 function setupExperienceUpload(ctx, config) {
   const enabled = config.designExperienceUpload === true
-  const endpoint = String(config.experienceEndpoint || config.telemetryEndpoint || '').trim()
+  // P1-A：experienceEndpoint 为空时回退链 telemetryEndpoint → commerceBackendUrl 派生
+  const endpoint = String(config.experienceEndpoint || '').trim() || deriveEndpoint(config, '/api/dsh/experience', 'telemetryEndpoint')
   if (!enabled || !endpoint) return
 
   // 动态 import：与 setupTelemetry 同构，保证无 Runtime 环境可被单独加载做单测
   const flushOnce = async () => {
     try {
       const { reportExperience } = await import('@wangxue98/dsh-motor-ai-core')
-      await reportExperience(config, { pluginVersion: PLUGIN_VERSION })
+      // core 的 reportExperience 自解析 experienceEndpoint/telemetryEndpoint；
+      // 派生端点时注入 effConfig，让 core 看到与门禁一致的可用端点
+      const effConfig = String(config.experienceEndpoint || config.telemetryEndpoint || '').trim()
+        ? config
+        : { ...config, experienceEndpoint: endpoint }
+      await reportExperience(effConfig, { pluginVersion: PLUGIN_VERSION })
     } catch { /* 回传绝不影响工具主流程 */ }
   }
 
@@ -267,7 +297,7 @@ function setupExperienceUpload(ctx, config) {
  */
 function setupIssueResolved(ctx, config) {
   const enabled = config.issueResolvedEnabled === true
-  const endpoint = String(config.issueResolvedEndpoint || config.commerceBackendUrl || '').trim()
+  const endpoint = deriveEndpoint(config, '/api/dsh/issue-resolved', 'issueResolvedEndpoint')
   if (!enabled || !endpoint) {
     ctx.logger?.info?.('[dsh-motor-ai-l0] 已解决问题回流：off（issueResolvedEnabled=false 或端点未配）')
     return
