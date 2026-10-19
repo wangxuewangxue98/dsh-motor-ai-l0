@@ -22,7 +22,10 @@
  *   故解析结果恒标 analytic_calibrated:false + confidence:0.5（公式级），待 S0 标定后上调。
  */
 
-import { quickL0Estimate, estimateTempRise, B_YOKE_SAT_T, STACKING_FACTOR } from '@wangxue98/dsh-motor-ai-core'
+import {
+  quickL0Estimate, estimateTempRise, B_YOKE_SAT_T, STACKING_FACTOR,
+  effectiveToothWidthInfo,
+} from '@wangxue98/dsh-motor-ai-core'
 
 // ───────────────────────────────────────────────────────────
 // A-⑥ env 开关（仿 formula-engine.mjs:46-48 范式）
@@ -102,12 +105,27 @@ export function doSaturationLoop(p, maxIter = 60) {
     B_delta_base = 0.8, B_t_base = 0, B_y_base = 0,
     statorId = 0, statorOd = 0, yokeThickness = 0, toothWidth = 0,
     airGap = 0, slotsStator = 0, poles = 4, coreLength = 0, muR0 = 2000,
+    // A+C（2026-10-20）：齿部等效宽输入，见 core.effectiveToothWidth()
+    slotShape = null, kShape = null, toothWidthTop = null, toothWidthRoot = null,
   } = p
   const pp = Math.max(1, Math.round(poles / 2)) // 极对数（poles/2），非极数；原 Math.round(poles) 把 4 极当 4 对极，轭面积被错除 2·pp
   const Di = statorId, L = coreLength, y = yokeThickness, Zs = slotsStator
   if (!(Di > 0) || !(L > 0) || !(Zs > 0)) {
     return { B_delta: B_delta_base, B_t: B_t_base, B_y: B_y_base, muR_t: muR0, muR_y: muR0, saturated: false, converged: false, iterations: 0, reason: '几何不足' }
   }
+  // A+C：齿宽真值化 + 显式等效齿宽模型。
+  // A：toothWidth 缺失/非正时回退 core 派生 0.5×槽距 —— 修复 At=0 ⇒ Bt=Infinity
+  //    （此前 row.tooth_width 缺失会静默产出 B_t=null 并污染全磁路解，不报错）。
+  // C：k = 等效宽/最小截面宽，默认 1.0（零回归）；真机实测 ≈1.352 但样本仅 2 台，
+  //    未定标前不作为默认值（不外推铁律）。
+  const twInfo = effectiveToothWidthInfo({
+    toothWidth, statorId: Di, slotsStator: Zs,
+    slotShape, kShape, toothWidthTop, toothWidthRoot,
+  })
+  if (!(twInfo.width > 0)) {
+    return { B_delta: B_delta_base, B_t: B_t_base, B_y: B_y_base, muR_t: muR0, muR_y: muR0, saturated: false, converged: false, iterations: 0, reason: '齿宽不足' }
+  }
+  const twEff = twInfo.width
   const Ag = Math.PI * Di * L / (2 * pp)
   // P1-1（2026-10-19）：齿部等效面积 = 每极齿数 × 齿宽 × 净铁长（叠压系数）× 波形系数。
   // ① STACKING_FACTOR：净铁长 = L·k_stack，旧式漏乘 ⇒ 净铁高估 2%、Bt 低估 2%。
@@ -119,12 +137,12 @@ export function doSaturationLoop(p, maxIter = 60) {
   // ⚠ 残余 +24% 来自**齿宽口径**（本处吃的是齿身宽，真机梯形齿的有效宽更大），
   //    需 ≥30 台带真实齿宽的异步机真值才能标定，本次不外推。
   const K_WAVE = Math.PI / 2
-  const At = (Zs / (2 * pp)) * toothWidth * L * STACKING_FACTOR * K_WAVE
+  const At = (Zs / (2 * pp)) * twEff * L * STACKING_FACTOR * K_WAVE
   // 轭部为整环铁；磁通在轭中平分（每侧 Φ/2），故 By=Φ/Ay（Ay 即整环截面积，
   // 不再额外 /(2·pp)；原写法 Ay 又除 2·pp 导致轭面积被缩小 2·pp 倍 → 轭密被放大同倍）。
   // 此面积模型与 formula-engine.mjs:584-585 的 toothBraw/yokeBraw 同口径（线性区收敛到基线）。
   const Ay = Math.PI * (Di + y) * y
-  const kC = carterFactor(toothWidth * 0.5, airGap, Math.PI * Di / Zs)
+  const kC = carterFactor(twEff * 0.5, airGap, Math.PI * Di / Zs)
   const dEff = airGap * kC
   const lt = Math.max(1, (statorOd - Di) / 2 - y)
   const ly = Math.max(1, y)
@@ -158,6 +176,8 @@ export function doSaturationLoop(p, maxIter = 60) {
     B_t: Math.round(Bt * 1000) / 1000,
     B_y: Math.round(By * 1000) / 1000,
     muR_t: Math.round(muRt), muR_y: Math.round(muRy),
+    // A+C 可追溯：齿宽口径来源（given / derived_0.5pitch / insufficient）与等效系数 k
+    tooth_width: { effective_mm: twInfo.width, base_mm: twInfo.base, k_shape: twInfo.k, source: twInfo.source },
     mmf_applied: Math.round(Fapplied), mmf_solved: Math.round(Fof(PhiStar)),
     // 饱和判据对齐 V08 门禁：齿 >1.8T 或轭 ≥ B_YOKE_SAT_T(1.9T) 视为进入饱和区。
     // 注：1.9T 为 codebase 轭失败阈值；正常轭密 1.5~1.8T 不标 saturated，避免旧 bug 时代的误报。
@@ -236,6 +256,9 @@ function analyticSolveOne(row, { estimateOpts, mode = 'off' } = {}) {
         statorId: row.stator_id, statorOd: row.stator_od, yokeThickness: row.yoke_thickness,
         toothWidth: row.tooth_width, airGap: row.air_gap, slotsStator: row.slots_stator,
         poles: row.poles, coreLength: row.core_length,
+        // A+C：槽形/k_shape 透传（行内无则 undefined ⇒ 走默认 1.0，零回归）
+        slotShape: row.slot_shape, kShape: row.tooth_k_shape,
+        toothWidthTop: row.tooth_width_top, toothWidthRoot: row.tooth_width_root,
       })
       const th = thermalCouplingLoop({
         statorOd: row.stator_od, coreLength: row.core_length, cooling: row.cooling,
@@ -261,6 +284,9 @@ function analyticSolveOne(row, { estimateOpts, mode = 'off' } = {}) {
       statorId: row.stator_id, statorOd: row.stator_od, yokeThickness: row.yoke_thickness,
       toothWidth: row.tooth_width, airGap: row.air_gap, slotsStator: row.slots_stator,
       poles: row.poles, coreLength: row.core_length,
+      // A+C：槽形/k_shape 透传（行内无则 undefined ⇒ 走默认 1.0，零回归）
+      slotShape: row.slot_shape, kShape: row.tooth_k_shape,
+      toothWidthTop: row.tooth_width_top, toothWidthRoot: row.tooth_width_root,
     })
     const th = thermalCouplingLoop({
       statorOd: row.stator_od, coreLength: row.core_length, cooling: row.cooling,
