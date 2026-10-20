@@ -169,6 +169,47 @@ check('SKILL.md 三重一致性（W5 前跳过）', () => {
   return `SKILL.md ${v} 一致`
 })
 
+// ---------- 4.9 defineTool output schema 防线（0.6.5 激活事故复检） ----------
+// 事故背景：0.6.4 新增 submit_resolved_case 的 output.schema 为裸 { type: 'object' }，
+// 真实 dsh-tools 的 value schema 编译器对 object 分支硬要求显式 additionalProperties，
+// defineTool 注册即抛 authorError → 插件激活失败（「安装正确、重启报故障」）。
+// 本检查静态复检全部工具文件：schema: 指向的 object 缺 additionalProperties 即失败。
+check('defineTool output schema 防线', () => {
+  const toolsDir = join(ROOT, 'tools')
+  const bad = []
+  const walk = (dir) => {
+    for (const ent of readdirSync(dir, { withFileTypes: true })) {
+      if (ent.name === 'node_modules') continue
+      const p = join(dir, ent.name)
+      if (ent.isDirectory()) walk(p)
+      else if (/\.mjs$/.test(ent.name)) {
+        const text = readFileSync(p, 'utf8')
+        const re = /type:\s*'object'/g
+        let m
+        while ((m = re.exec(text)) !== null) {
+          const start = text.lastIndexOf('{', m.index)
+          if (start < 0) continue
+          let depth = 0, end = -1
+          for (let i = start; i < text.length; i++) {
+            if (text[i] === '{') depth++
+            else if (text[i] === '}') { depth--; if (depth === 0) { end = i; break } }
+          }
+          if (end < 0) continue
+          const frag = text.slice(start, end + 1)
+          if (frag.includes('additionalProperties')) continue
+          const before = text.slice(Math.max(0, start - 80), start)
+          if (!/schema:\s*$/.test(before)) continue
+          const line = text.slice(0, m.index).split('\n').length
+          bad.push(`${relative(ROOT, p)}:${line}`)
+        }
+      }
+    }
+  }
+  if (existsSync(toolsDir)) walk(toolsDir)
+  must(bad.length === 0, `schema object 缺 additionalProperties（真实 defineTool 注册即抛）: ${bad.join(', ')}`)
+  return 'tools 全部 schema object 合规'
+})
+
 // ---------- 5. 所有 .mjs 语法检查 ----------
 async function walkMjs(dir) {
   const out = []

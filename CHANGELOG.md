@@ -5,6 +5,25 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.6.5] - 2026-10-20 — 修复 submit_resolved_case 致插件重启激活失败（严重）
+
+> **性质：hotfix（rc.20/0.6.4 起新增工具的激活级缺陷；修复后零行为变化）。**
+
+1. **修复 `submit_resolved_case` output.schema 契约缺陷（激活失败级）**：0.6.4 起该工具
+   `output.schema` 为裸 `{ type: 'object' }`，真实 dsh-tools（DSH 0.12.0 内置版同款）的
+   value schema 编译器对 object 分支硬要求显式 `additionalProperties`
+   （"additionalProperties must be explicitly true or false"），`defineTool` 注册即抛
+   authorError → registerAll 抛 → cordis fiber FAILED → 「更新后的组合无法启动」。
+   安装阶段只验 patch entry list 结构、不 import 插件模块，故表现为
+   **「安装正确、重启报故障」**。
+   修复：schema 改回 `{ type: 'string' }`、execute 返回 JSON 字符串、render 直出
+   （与全仓其余工具一致，兼容各代 DSH 契约）；verify 冒烟以客户端真实 dsh-tools
+   单变量对照实证（修复前 THROW / 修复后 REGISTER OK）。
+2. **`scripts/verify.mjs` 新增「defineTool output schema 防线」**：静态复检全部工具文件，
+   `schema:` 指向的 object 缺 additionalProperties 即门禁失败（防回归）。
+3. **`manifest.json` 版本对齐 0.5.3 → 0.6.5**（version / skill_version / skills[0].version
+   三处；此前 manifest 滞后于 package.json 两个 minor，是「插件管理版本号不对」类隐患源）。
+
 ## [0.6.4] - 2026-10-19 — P1 反馈回流三件套 + 解析齿磁密口径统一（π/2 波形系数） + S0 数据集加载
 
 > **性质：additive 功能（回流通道 opt-in 默认关，零回归）+ 解析通道内部口径修复（P1-1）；权威字段仍走公式基线，解析通道不改主指标。**

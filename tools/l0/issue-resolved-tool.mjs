@@ -115,8 +115,13 @@ export async function registerSubmitResolvedCase(ctx, config = {}) {
       + '⚠️ 需先在插件配置开启 issueResolvedEnabled: true（默认关闭）才真正外发；未开启时仅给出提示。',
     parameters: TOOL_PARAMS,
     output: {
-      schema: { type: 'object' },
-      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
+      // ⚠️ schema 必须与 execute 返回类型一致：本工具 execute 返回 JSON 字符串，
+      //    故 schema 为 string（与全仓其余工具一致，兼容各代 DSH 契约）。
+      //    历史事故：rc.20/0.6.4 曾用裸 { type: 'object' }，真实 dsh-tools 的 value
+      //    schema 编译器对 object 硬要求显式 additionalProperties，缺则 defineTool
+      //    注册即抛 authorError → 插件激活失败（「安装正确、重启报故障」）。
+      schema: { type: 'string' },
+      render: (_args, value) => [{ type: 'text', text: value }],
     },
     async execute(args) {
       try {
