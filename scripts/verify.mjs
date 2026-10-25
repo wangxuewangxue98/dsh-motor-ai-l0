@@ -1374,21 +1374,32 @@ check('P1: V14 只抓「填错」不抓「量化」，量化移交 V17', () => {
 check('P1: V17 判据以「取整后偏差」为准，不以「理想匝<1」一刀切（防误杀）', () => {
   // 反例构造：理想匝 0.995（<1）但取整后偏差仅 0.5% ⇒ 必须可实现，不得判 failed。
   // 早期实现按「理想匝<1 即无解」判，会把这类完全正常的行误杀（实测误杀数十行）。
-  const V = 380; const f = 100; const phi = 0.001; const kw = 0.95
   // 用真实矩阵行做基准，只调电压使理想匝逼近 1 匝
+  const V = 380
   const m = buildParamMatrix({ power_kw: 15, speed_rpm: 1460, voltage_v: 380, count: 20 }, {})
   const row = m.matrix[0]
   const nPhaseIdeal = ((row.slots_stator / 3) * row.turns_per_coil) / Math.max(1, row.parallel_circuits)
-  // 令电压缩放使理想匝 = 0.995
-  const scale = 0.995 / ((nPhaseIdeal * Math.max(1, row.parallel_circuits) * 3) / row.slots_stator)
-  const tuned = {
-    ...row, voltage: V * scale, poles: row.poles, speed: row.speed,
+  const mk = (s) => ({
+    ...row, voltage: V * s, poles: row.poles, speed: row.speed,
     stator_id: row.stator_id, core_length: row.core_length,
     slots_stator: row.slots_stator, parallel_circuits: row.parallel_circuits,
     _physics: { ...row._physics },
+  })
+  // ⚠ P2-C 订正（2026-10-25）：异步机 Bg 分档标定后（4 极 0.80→0.621T），turns_ideal ∝ V/Bg，
+  //   原按 0.80T 口径硬推的缩放不再自洽（实测理想匝 1.242>1，本门禁误红）。
+  //   改为「实测比例校正」：turns_ideal 对电压严格成正比 ⇒ 用实测值比例逼近 0.995，
+  //   与 Bg 标定值解耦，未来再标定也自洽（不再依赖常量口径）。
+  let scale = 0.995 / ((nPhaseIdeal * Math.max(1, row.parallel_circuits) * 3) / row.slots_stator)
+  let be = null
+  for (let it = 0; it < 4; it++) {
+    be = validateDesign(mk(scale), { insulationClass: 'F' }).metrics?.back_emf
+    if (!be || !(be.turns_ideal > 0)) break
+    if (Math.abs(be.turns_ideal - 0.995) < 0.003) break
+    scale *= 0.995 / be.turns_ideal
   }
+  const tuned = mk(scale)
   const rep = validateDesign(tuned, { insulationClass: 'F' })
-  const be = rep.metrics?.back_emf
+  be = rep.metrics?.back_emf
   must(be && be.turns_ideal < 1, `本用例需理想匝<1，实际 ${be?.turns_ideal}`)
   must(be.dev <= 0.10, `构造偏差应 ≤10%，实际 ${be.dev}`)
   const v17 = (rep.issues ?? []).filter((i) => i.rule === 'V17')
@@ -2481,9 +2492,13 @@ check('P0-1 磁密口径统一：native 实际口径轭磁密 == 门禁 V08 判�
 })
 
 check('P0-2 V08 补 1.7T 严重档：>1.7 打 severe、>1.9 仍 failed、≤1.7 不打 severe', () => {
-  // 锁意图口径（bgCaliber:'intent'）⇒ By = 0.8·Dsi/(p·yoke·k_stack) = 34.69/yoke，可用轭厚精确调档
+  // 锁意图口径（bgCaliber:'intent'）⇒ By = Bg·Dsi/(p·yoke·k_stack)，可用轭厚精确调档
+  // ⚠ P2-C 订正（2026-10-25 选项 C）：异步 4 极 Bg 已按 Y 系列真值分档标定（0.80→0.621T），
+  //   原硬编码 0.8 的构造公式不再自洽（实测轭厚偏差 ~29%）。改为动态取本机当前设计意图值，
+  //   使构造公式对未来任何再标定自洽（不再依赖常量口径）。
   const Dsi = 170, p = 4, kStack = STACKING_FACTOR
-  const yokeFor = (by) => (0.8 * Dsi) / (p * by * kStack)
+  const bgIntent = quickL0Estimate(Y160_BASE, {}).air_gap_flux_density
+  const yokeFor = (by) => (bgIntent * Dsi) / (p * by * kStack)
   const at = (by) => {
     const r = validateDesign({ ...Y160_BASE, yoke_thickness: yokeFor(by), turns_per_coil: 7, peak_current: 37 },
       { bgCaliber: 'intent' })
@@ -2584,7 +2599,7 @@ check('P0-4 电流 pf/η 分档：铭牌反算校验 + PMSM 不污染 + 输入�
     + `PMSM 保持 0.92；显式覆盖生效；分档单调互异 ${pfs.join('/')}`
 })
 
-check('P0-3 气隙磁密 Bg 按机型+极数分档：PMSM 生效 / 异步机隔离 / 6极不外推（含 env=0 反向验证）', () => {
+check('P0-3 气隙磁密 Bg 按机型+极数分档：PMSM 生效 / 异步机独立标定不污染 / 缺极回退（含 env+opts 反向验证）', () => {
   const PMSM4 = { ...Y160_BASE, motor_type: 'pmsm', poles: 4 }
   const expect4 = AIR_GAP_FLUX_BY_POLES.pmsm[4]
   // ① 分档命中：PMSM 4 极应取真值中位（旧恒定 0.80T 对真值高估 +10.5%，对 2 极 +21.4%）
@@ -2597,20 +2612,37 @@ check('P0-3 气隙磁密 Bg 按机型+极数分档：PMSM 生效 / 异步机隔�
   const off = withEnv('DSH_L0_BG_BINS', '0', () => quickL0Estimate(PMSM4, {}))
   must(Math.abs(off.air_gap_flux_density - AIR_GAP_FLUX_DEFAULT) < 1e-9,
     `关闭开关后应回退缺省 ${AIR_GAP_FLUX_DEFAULT}T，实际 ${off.air_gap_flux_density}T`)
-  // ③ 异步机隔离 —— 本会话实证教训：S0 数据集中 80 行是 PMSM 真值（48V/1500~15000rpm），
-  //    曾被误当作异步机锚点（中位 0.717T）造成跨机型口径污染，故异步机不得套用该分档。
+  // ②b opts 通道（与 env 并列，缺一不可 —— 教训：开关类改动曾因只测 env 漏掉 opts 静默失效；
+  //    且本门禁返回串自始声称"双通道"但体内只有 env 断言，属虚假声明，本次补全实体断言）
+  const optOff = quickL0Estimate(PMSM4, { bgBins: false })
+  must(Math.abs(optOff.air_gap_flux_density - AIR_GAP_FLUX_DEFAULT) < 1e-9,
+    `opts.bgBins=false 应回退缺省 ${AIR_GAP_FLUX_DEFAULT}T，实际 ${optOff.air_gap_flux_density}T`)
+  const optOn = quickL0Estimate(PMSM4, { bgBins: true })
+  must(Math.abs(optOn.air_gap_flux_density - expect4) < 1e-9,
+    `opts.bgBins=true 应命中分档 ${expect4}T，实际 ${optOn.air_gap_flux_density}T`)
+  // ③ 异步机独立标定且不得污染（2026-10-25 选项 C 重订正）—— 历史教训：S0 数据集 80 行是
+  //    PMSM 真值（48V/1500~15000rpm）曾被误当异步机锚点；designs.db 标称 induction 的 4 极行
+  //    28/37 实为转子 44 槽 PMSM 签名（中位 0.708 ≈ pmsm 表 0.724 即证）。异步机现已按 Y 系列
+  //    清洁子集（出力≥70% 额定，n=17/5/10/5）独立标定 ⇒ 必须命中自身分档，且不得等于 PMSM 值。
   const ind = quickL0Estimate({ ...Y160_BASE, motor_type: 'induction', poles: 4 }, {})
-  must(Math.abs(ind.air_gap_flux_density - AIR_GAP_FLUX_DEFAULT) < 1e-9,
-    `异步机真值样本不足(n=2)不得套用 PMSM 分档，应保持 ${AIR_GAP_FLUX_DEFAULT}T，实际 ${ind.air_gap_flux_density}T`)
+  const indExpect = AIR_GAP_FLUX_BY_POLES.induction[4]
+  must(Math.abs(ind.air_gap_flux_density - indExpect) < 1e-9,
+    `异步机 4 极应命中自身真值分档 ${indExpect}T，实际 ${ind.air_gap_flux_density}T`)
+  must(ind.bg_bins_caliber === 'poles_binned_truth',
+    `异步机 4 极应标记 poles_binned_truth，实际 ${ind.bg_bins_caliber}`)
+  must(Math.abs(ind.air_gap_flux_density - expect4) > 1e-9,
+    `异步机分档(${ind.air_gap_flux_density}) 不得等于 PMSM 值(${expect4})（防跨机型污染死灰复燃）`)
   // ④ 未标定极数不得外推
   const p6 = quickL0Estimate({ ...PMSM4, poles: 6 }, {})
   must(Math.abs(p6.air_gap_flux_density - AIR_GAP_FLUX_DEFAULT) < 1e-9,
     `6 极无真值不得外推，应回退 ${AIR_GAP_FLUX_DEFAULT}T，实际 ${p6.air_gap_flux_density}T`)
-  // ⑤ 分档表自洽（防 null/undefined 被当数值 ⇒ 静默回退成 NaN）
-  const bins = AIR_GAP_FLUX_BY_POLES.pmsm
-  must(Object.values(bins).every((v) => Number.isFinite(v)),
-    `PMSM 分档表不得含非数值：${JSON.stringify(bins)}`)
-  return `PMSM 4 极 ${expect4}T（旧 ${AIR_GAP_FLUX_DEFAULT}T）；异步机隔离保持 ${AIR_GAP_FLUX_DEFAULT}T；6 极回退；env=0 与 opts 双通道回退正常`
+  // ⑤ 分档表自洽（防 null/undefined 被当数值 ⇒ 静默回退成 NaN）；两机型表都要查
+  for (const [mt2, bins] of Object.entries(AIR_GAP_FLUX_BY_POLES)) {
+    must(Object.values(bins).every((v) => Number.isFinite(v)),
+      `${mt2} 分档表不得含非数值：${JSON.stringify(bins)}`)
+  }
+  return `PMSM 4 极 ${expect4}T；异步机 4 极独立标定 ${indExpect}T（≠PMSM 防污染）；`
+    + `6 极回退 ${AIR_GAP_FLUX_DEFAULT}T；env=0 与 opts 双通道回退均正常`
 })
 
 // ---------- 输出 ----------
