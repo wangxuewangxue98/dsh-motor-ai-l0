@@ -29,6 +29,7 @@ import {
   yokeThickness, solveYokeAndFrame, yokeThicknessForFlux, shaftDia, empiricalAirGap, fitLambdaWithinRange,
   PMSM_DEFAULT_POLE_ARC, PMSM_DEFAULT_PM_THICK_MM,
   DEFAULT_LINE_FREQ_HZ, DEFAULT_INSULATION_CLASS,
+  AIR_GAP_FLUX_BY_POLES, AIR_GAP_FLUX_DEFAULT, STACKING_FACTOR,
   round1, round2, clamp,
 } from '@wangxue98/dsh-motor-ai-core'
 import {
@@ -66,6 +67,9 @@ export const TOOL_PARAMS = {
   base_diameter: { type: 'number', description: '基准内径中心 (mm)，覆盖经验估算' },
   base_length: { type: 'number', description: '基准铁心长度中心 (mm)' },
   count: { type: 'number', description: '目标方案数，默认 1000' },
+  tw_axis: { type: 'boolean', description: 'v0.6.7 L2：开启 tooth_width 候选维度（显式齿宽通道进池），默认 false（env DSH_L0_TW_AXIS 亦可开）。每行在派生齿宽之外追加若干齿宽档，使齿磁密 Bt 可覆盖 EM0103 带宽 [1.4,1.7]T —— 默认池 Bt 恒 ≈0.72~0.81T（Qs/Di 精确约掉），达标设计在池内不存在，换任何排序键都检索不到' },
+  tw_axis_targets: { type: 'array', description: 'v0.6.7 L2：目标齿磁密 (T) 列表，默认 [1.55,1.2]（1.55=EM0103 带宽中心，1.2=部分抬升档）。按各行极数的分档 Bg 反解齿宽乘子（与引擎同源同表，Bg 再标定后自动自适应）；控制档（派生齿宽）恒保留作对照' },
+  tw_axis_factors: { type: 'array', description: 'v0.6.7 L2：齿宽乘子列表（相对派生齿宽 π·Di/2Qs），显式给出时优先于 tw_axis_targets（单变量对照用，不依赖 Bg）。钳 [0.5,1.0]：<0.5×派生 ⇒ 齿宽<0.25×槽距，RMxprt 槽形反驱会产出顶宽>底宽的倒梯形槽（probe_slot_geom 实证），物理不可下线' },
   line_freq_hz: { type: 'number', description: `电源频率 (Hz)，默认 ${DEFAULT_LINE_FREQ_HZ}。同步转速 n_sync=120·f/p，60Hz 电网与 VFD 变频工况必须显式传入，否则 V16 会误判超同步` },
   insulation_class: { type: 'string', description: `绝缘等级 B/F/H，默认 ${DEFAULT_INSULATION_CLASS}。B=80K / F=105K / H=125K 温升限值` },
 }
@@ -197,6 +201,93 @@ function isFilterUndersizedEnabled(spec = {}) {
 }
 
 /**
+ * v0.6.7 L2：tooth_width 候选维度（显式齿宽通道进池）
+ * ---------------------------------------------------------------------------
+ * 背景（output/p2_top_ranking_1000_analysis.md 第一方复跑）：默认池每行
+ * tooth_width 恒为派生值 0.5×槽距 ⇒ Bt = 4·Bg/(π·k_stack)（Qs/Di 精确约掉）
+ * ⇒ 450kW 实测池内 Bt∈[0.72,0.81]T，而 EM0103 带宽 [1.4,1.7]T —— **达标
+ * 设计在池内不存在**，Top10 无论按效率还是温升排序都检索不到；附件中
+ * Bt=1.56T 的设计是 tooth_width=7.98mm 显式通道的人工迭代产物，非池内原生行。
+ *
+ * 本维度把该显式通道矩阵化：每个基础几何行追加若干齿宽档（控制档=派生齿宽
+ * 恒保留），使 Bt 覆盖 EM0103 带宽。Bt 与齿宽严格成反比 —— formula-engine:673
+ * `toothBraw = 2·Bg·Di/(Zs·toothWidthMm·k_stack)`，意图与实际两个口径都吃
+ * params.tooth_width（line 672 `params.tooth_width ?? 派生`）。
+ *
+ * 开关（默认 OFF，零回归）：spec.tw_axis（true/'true'）> env DSH_L0_TW_AXIS。
+ * 齿宽档来源二选一（factors 显式优先）：
+ *   · tw_axis_targets（默认 [1.55,1.2]）：目标 Bt ⇒ 按该行极数的分档 Bg 反解
+ *     乘子 f = 4·Bg/(π·k_stack·target)；Bg 取自 AIR_GAP_FLUX_BY_POLES（与引擎
+ *     airGapFluxForDesign 同源同表），Bg 再标定后档位自动自适应；
+ *   · tw_axis_factors：直接给乘子（不依赖 Bg，单变量对照用）。
+ * 乘子钳 [TW_AXIS_FACTOR_MIN, TW_AXIS_FACTOR_MAX]：<0.5×派生 ⇒ 齿宽<0.25×
+ * 槽距，RMxprt 槽形反驱会产出顶宽>底宽的倒梯形槽（dev-calib/probe_slot_geom.py
+ * 实证 tw=3.92mm ⇒ Bs1=11.09 > Bs2=6.68），物理不可下线；>1 加宽齿只会让 Bt
+ * 更低，无工程价值。
+ * 预算：候选总数仍等于 count（基础网格预算 ÷K、每行展开 K 档、按 D²L 邻近度
+ * 排序后截回 count）⇒ 不突破 maxMatrixSize、不改变 count 语义、无截断告警。
+ */
+export const TW_AXIS_FACTOR_MIN = 0.5
+export const TW_AXIS_FACTOR_MAX = 1.0
+const TW_AXIS_DEFAULT_TARGETS = [1.55, 1.2]
+const ENV_TW_AXIS = 'DSH_L0_TW_AXIS'
+
+/** 与 core formula-engine ENV_ON 同口径（该常量未从 index 导出故复刻；门禁以控制行 Bt 反绑校验双源一致） */
+const envOnLocal = (v, dflt = true) => (v === undefined || v === '' ? dflt : !(v === '0' || String(v).toLowerCase() === 'false' || String(v).toLowerCase() === 'off'))
+/** 与 core bgBinsOn({}) 同口径：引擎侧 estimateOpts 不传 bgBins ⇒ 只认 env，缺省 ON */
+const bgBinsOnLocal = () => envOnLocal(process.env.DSH_L0_BG_BINS, true)
+/** 该行极数/机型的设计意图 Bg（与 core airGapFluxForDesign(poles, mt, {}) 同式同表） */
+function bgForPoleLocal(poles, motorType) {
+  if (!bgBinsOnLocal()) return AIR_GAP_FLUX_DEFAULT
+  const bins = AIR_GAP_FLUX_BY_POLES[String(motorType ?? 'induction').toLowerCase()]
+  const v = bins?.[poles]
+  return Number.isFinite(v) ? v : AIR_GAP_FLUX_DEFAULT
+}
+
+/**
+ * 目标齿磁密 ⇒ 齿宽乘子（相对派生齿宽，与几何无关——只依赖极数/机型的 Bg）。
+ * 由 Bt(tw) = 4·Bg/(π·k_stack·f)（formula-engine:673 代入 tw = f·π·Di/(2·Zs)）
+ * 反解 ⇒ f = 4·Bg/(π·k_stack·target)，钳 [TW_AXIS_FACTOR_MIN, TW_AXIS_FACTOR_MAX]。
+ * @param {object} p { poles, motorType, targetBt }
+ * @returns {number} 乘子（钳后）；入参非法时回 1（控制档）
+ */
+export function twAxisFactorFor({ poles, motorType, targetBt }) {
+  const bg = bgForPoleLocal(poles, motorType)
+  const btNatural = (4 * bg) / (Math.PI * STACKING_FACTOR)   // 派生齿宽下的 Bt
+  const f = btNatural / Number(targetBt)
+  if (!Number.isFinite(f) || f <= 0) return 1
+  return clamp(f, TW_AXIS_FACTOR_MIN, TW_AXIS_FACTOR_MAX)
+}
+
+/**
+ * 解析 tooth_width 轴配置（buildParamMatrix 与门禁共用，纯函数）。
+ * @param {object} spec 规范化后的工具入参
+ * @returns {{on:boolean, mode:'targets'|'factors', targets:number[], factors:number[]|null, k:number}}
+ *   k = 每行档位数（targets 模式 = 1 控制档 + 目标数；factors 模式 = 乘子数）
+ */
+export function resolveTwAxis(spec = {}) {
+  const on = spec?.tw_axis !== undefined
+    ? (spec.tw_axis === true || spec.tw_axis === 'true')
+    : envOnLocal(process.env[ENV_TW_AXIS], false)
+  if (!on) return { on: false, mode: 'targets', targets: [], factors: null, k: 1 }
+  let factors = null
+  if (Array.isArray(spec?.tw_axis_factors) && spec.tw_axis_factors.length > 0) {
+    factors = spec.tw_axis_factors
+      .map((x) => Number(x))
+      .filter((x) => Number.isFinite(x) && x > 0)
+      .map((x) => clamp(x, TW_AXIS_FACTOR_MIN, TW_AXIS_FACTOR_MAX))
+    if (factors.length === 0) factors = null
+  }
+  if (factors) return { on: true, mode: 'factors', targets: [], factors, k: factors.length }
+  const tList = (Array.isArray(spec?.tw_axis_targets) && spec.tw_axis_targets.length > 0
+    ? spec.tw_axis_targets : TW_AXIS_DEFAULT_TARGETS)
+    .map((x) => Number(x))
+    .filter((x) => Number.isFinite(x) && x > 0)
+  const targets = tList.length > 0 ? tList : TW_AXIS_DEFAULT_TARGETS
+  return { on: true, mode: 'targets', targets, factors: null, k: 1 + targets.length }
+}
+
+/**
  * 单行转矩包络：需求 vs 额定提供 vs 最大提供 → 可行性判据。
  * 取代旧版 estTorque = torqueNm × D²L/D²L_base 线性类比（同几何多转矩点误差 max 523%）。
  */
@@ -264,6 +355,10 @@ export function buildParamMatrix(rawSpec, config = {}) {
     )
   }
   const count = Math.min(maxMatrixSize, requestedCountEarly)
+  // v0.6.7 L2：tooth_width 候选维度（默认 OFF）。开启后基础网格预算 ÷K、每行
+  // 展开 K 个齿宽档 ⇒ 候选总数仍为 count（不突破 maxMatrixSize、无截断告警）。
+  const twAxis = resolveTwAxis(spec)
+  const gridBudget = twAxis.on ? Math.max(1, Math.ceil(count / twAxis.k)) : count
 
   // ---- PMSM 口径开关（P0，0.1.4）----
   // 缺省 → legacy 口径 idRatio(pole)=0.55+0.03(p−2)，与 0.1.3 / 程序 focused_scan 逐字节一致（零回归）；
@@ -288,7 +383,7 @@ export function buildParamMatrix(rawSpec, config = {}) {
     poleCandidates: spec.pole_candidates,
     polesStrict: spec.poles_strict,
   })
-  const perPole = Math.max(1, Math.ceil(count / poleList.length))
+  const perPole = Math.max(1, Math.ceil(gridBudget / poleList.length))
   const axis = Math.max(2, Math.ceil(Math.sqrt(perPole)))
 
   const dSteps = linspace(baseD * (1 - scanRange), baseD * (1 + scanRange), axis)
@@ -475,7 +570,7 @@ export function buildParamMatrix(rawSpec, config = {}) {
         })
 
         comboIndex += 1
-        if (matrix.length >= count) break outer
+        if (matrix.length >= gridBudget) break outer
       }
     }
   }
@@ -491,6 +586,41 @@ export function buildParamMatrix(rawSpec, config = {}) {
     else undersizedFiltered = 0
   }
 
+  // ---- v0.6.7 L2：tooth_width 候选维度展开（默认 OFF，零回归）----
+  // 每个基础行追加齿宽档：targets 模式 = [控制档(派生齿宽), 各目标反解档]；
+  // factors 模式 = 给定乘子档。行内 tooth_width 本就是 L1 必填显式字段，此处
+  // 仅改其取值 —— formula-engine 意图/实际两个口径都吃 params.tooth_width。
+  // ⚠ 目标低于当前 Bt_natural 时乘子钳为 1.0 ⇒ 产生与控制档重复的行（无害，
+  //   仅占位；默认目标 [1.55,1.2] 与当前 Bg 分档下不出现）。
+  let twAxisRows = 0
+  if (twAxis.on) {
+    const expanded = []
+    for (const r of matrix) {
+      const twBase = r.tooth_width
+      const variants = twAxis.mode === 'factors'
+        ? twAxis.factors.map((f) => ({ factor: f, target_t: null }))
+        : [
+            { factor: 1, target_t: null },
+            ...twAxis.targets.map((t) => ({
+              factor: twAxisFactorFor({ poles: r.poles, motorType: r.motor_type, targetBt: t }),
+              target_t: t,
+            })),
+          ]
+      for (const v of variants) {
+        expanded.push({
+          ...r,
+          tooth_width: round2(v.factor * twBase),
+          _physics: {
+            ...r._physics,
+            tw_axis: { factor: v.factor, target_t: v.target_t, tw_base_mm: twBase },
+          },
+        })
+        twAxisRows += 1
+      }
+    }
+    matrix = expanded
+  }
+
   // ---- 按 D²L 与目标转矩的匹配度排序（physics_kernel.py:689-694）----
   const targetD2l = computeD2L(baseD, baseL)
   if (targetD2l > 0) {
@@ -498,6 +628,8 @@ export function buildParamMatrix(rawSpec, config = {}) {
       Math.abs(a._physics.d_squared_l - targetD2l) -
       Math.abs(b._physics.d_squared_l - targetD2l))
   }
+  // L2：展开后总数 ≈ count（±K-1），按 D²L 邻近度截回 count，保持「目标方案数」语义
+  if (twAxis.on && matrix.length > count) matrix = matrix.slice(0, count)
 
   // truncated 必须拿「原始请求量」比，不能拿被 maxMatrixSize 夹断后的 count 比 ——
   // 后者恒为 false，会掩盖真实截断。
@@ -653,9 +785,39 @@ export function buildParamMatrix(rawSpec, config = {}) {
     })
   }
 
+  // ---- v0.6.7 L2：tooth_width 轴透明度（开启时强制可见，含物理下限告诫）----
+  let twAxisMeta = { on: false }
+  if (twAxis.on) {
+    const byPole = {}
+    for (const pole of poleList) {
+      byPole[pole] = twAxis.mode === 'factors'
+        ? twAxis.factors
+        : [1, ...twAxis.targets.map((t) => twAxisFactorFor({ poles: pole, motorType: motorResolved.type, targetBt: t }))]
+    }
+    twAxisMeta = {
+      on: true, mode: twAxis.mode, targets: twAxis.targets,
+      factors_resolved: twAxis.factors, factors_by_pole: byPole, expanded_rows: twAxisRows,
+    }
+    warnings.push({
+      code: 'TW_AXIS_ACTIVE',
+      level: 'info',
+      mode: twAxis.mode,
+      targets: twAxis.targets,
+      factors_by_pole: byPole,
+      message:
+        `tooth_width 候选维度已开启（mode=${twAxis.mode}）：每行在派生齿宽（0.5×槽距，Bt≈0.72~0.81T）之外` +
+        (twAxis.mode === 'factors'
+          ? `追加乘子 [${twAxis.factors.join(', ')}] 齿宽档。`
+          : `追加目标齿磁密 [${twAxis.targets.join(', ')}]T 反解的齿宽档（各极数乘子见 factors_by_pole；控制档=派生齿宽恒保留）。`) +
+        `乘子下限 ${TW_AXIS_FACTOR_MIN}：齿宽<0.25×槽距时 RMxprt 槽形反驱会产出顶宽>底宽的倒梯形槽，物理不可下线。` +
+        `齿宽为显式传入 ⇒ 下游 handoff 的 tooth_width 不再恒等于派生值，L1/RMxprt 槽形将随齿宽反驱变化，需按冲片工艺核对齿根宽。`,
+    })
+  }
+
   return {
     warnings,
     od_limit: odLimitMeta,
+    tw_axis: twAxisMeta,
     matrix: returned,
     total: matrix.length,
     returned: returned.length,
@@ -694,6 +856,9 @@ export async function registerParamMatrix(ctx, config = {}) {
       '每个组合严格包含 L1 所需的 16 个顶层字段与 _physics 物理核验字段。\n' +
       '产出可直接作为 params_list 传给 motor_design_validate（先校验剔除 failed）\n' +
       '和 motor_l0_estimate（再估算排序），三者构成标准流水线。\n' +
+      'v0.6.7 L2：可选开启 tooth_width 候选维度（tw_axis=true / env DSH_L0_TW_AXIS）—— 每行在派生齿宽之外\n' +
+      '追加目标齿磁密反解的齿宽档，使齿磁密 Bt 可覆盖 EM0103 带宽 [1.4,1.7]T（默认池 Bt 恒 ≈0.72~0.81T，\n' +
+      '达标设计在池内不存在）；默认关闭，零回归。\n' +
       '本工具为纯本地计算，毫秒级返回，不调用任何外部求解器。',
     parameters: TOOL_PARAMS,
     output: {

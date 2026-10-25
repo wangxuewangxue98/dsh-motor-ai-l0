@@ -22,7 +22,7 @@ whenToUse: >
 user-invocable: true
 metadata:
   author: Motor-AI
-  version: 0.6.6
+  version: 0.6.7
   level: l0
   tier: free
 ---
@@ -94,6 +94,9 @@ L0 的几何/磁密/反电势模型按**工频中压异步电机**标定。超�
 | `cooling` | ⬜ | 冷却方式，缺省 `forced_air` |
 | `stator_od_limit` | ⬜ | 外径上限 mm（机座号/隔爆外壳约束）。缺省按基准尺寸自伸缩，夹紧时回吐 `OD_LIMIT_CLAMPED` 告警 |
 | `count` | ⬜ | 组合数，缺省 1000 |
+| `tw_axis` | ⬜ | v0.6.7：开启 tooth_width 候选维度（默认 false，env `DSH_L0_TW_AXIS` 亦可开）。每行在派生齿宽（0.5×槽距）之外追加目标齿磁密反解的齿宽档，使 Bt 可覆盖 EM0103 带宽 [1.4,1.7]T —— 默认池 Bt 恒 ≈0.72~0.94T，达标设计在池内 0 台（450kW 实测） |
+| `tw_axis_targets` | ⬜ | v0.6.7：目标齿磁密 (T) 列表，缺省 [1.55,1.2]；按各行极数分档 Bg 反解乘子，控制档（派生齿宽）恒保留 |
+| `tw_axis_factors` | ⬜ | v0.6.7：齿宽乘子列表（相对派生齿宽），显式给出时优先于 targets；钳 [0.5,1.0] |
 
 **极数推荐口径**：高速（≥12000rpm）一律 2 极。
 永磁同步机**不存在 1 极** —— 若用户口径出现 1 极，按 2 极处理并说明

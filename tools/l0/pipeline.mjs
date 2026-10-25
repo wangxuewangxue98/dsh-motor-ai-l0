@@ -40,6 +40,9 @@ export const TOOL_PARAMS = {
   base_diameter: { type: 'number', description: '基准内径中心 (mm)' },
   base_length: { type: 'number', description: '基准铁心长度中心 (mm)' },
   count: { type: 'number', description: '目标方案数，默认 1000（广筛场景可给更大值）' },
+  tw_axis: { type: 'boolean', description: 'v0.6.7 L2：开启 tooth_width 候选维度（显式齿宽通道进池），默认 false（env DSH_L0_TW_AXIS 亦可开）。每行在派生齿宽之外追加目标齿磁密反解的齿宽档，使齿磁密 Bt 可覆盖 EM0103 带宽 [1.4,1.7]T —— 默认池 Bt 恒 ≈0.72~0.81T，达标设计在池内不存在' },
+  tw_axis_targets: { type: 'array', description: 'v0.6.7 L2：目标齿磁密 (T) 列表，默认 [1.55,1.2]（1.55=EM0103 带宽中心）。按各行极数的分档 Bg 反解齿宽乘子；控制档（派生齿宽）恒保留' },
+  tw_axis_factors: { type: 'array', description: 'v0.6.7 L2：齿宽乘子列表（相对派生齿宽），显式给出时优先于 tw_axis_targets；钳 [0.5,1.0]（<0.5×派生 ⇒ RMxprt 槽形反驱出倒梯形槽，物理不可下线）' },
   top_n: { type: 'number', description: '回吐前 N 个方案，默认 10（聚合工具已封顶，避免回吐全量触发截断）' },
   sort_by: {
     type: 'string',
