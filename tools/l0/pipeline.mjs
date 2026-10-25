@@ -21,6 +21,7 @@ import { normalizeSpec } from '@wangxue98/dsh-motor-ai-core'
 import { buildParamMatrix } from './param-matrix.mjs'
 import { runDesignValidate } from './design-validate.mjs'
 import { runL0Estimate } from './l0-estimate.mjs'
+import { VFD_IP67_WARNING_TEXT } from './vfd-ip67-model.mjs'
 import { getUsageSink, logUsage } from '@wangxue98/dsh-motor-ai-core'
 import { assertFreeQuota, QuotaExceededError, newQuotaChain, withQuotaChain } from '../../lib/quota.mjs'
 
@@ -63,6 +64,28 @@ export const TOOL_PARAMS = {
     description: 'v0.5.4 P1-5：是否聚合「杠杆审计」摘要（默认 false）。开启后按规则聚合可调余量分布' +
       '（V07 齿宽/V08 轭厚/V15 匝数的精确反解量 min/median/max），并给出 Top1 行的杠杆建议；' +
       '上下文只回紧凑聚合，明细在 handoff 文件',
+  },
+  vfd: {
+    type: 'object',
+    description: 'v0.6.8 P2：变频驱动建模（M1~M7）。默认 OFF（env DSH_L0_VFD 亦可开）。'
+      + 'filter(none/dvdt/sine) | cable_m | k_h | fan(self/independent) | min_speed_rpm | '
+      + 'shaft_current_a | bearing | insulation_coordination_margin | surge_withstand_ratio | '
+      + 'insulation_life_years | emc_margin_db | immunity_level | control | field_weakening_ratio | '
+      + 'torque_bandwidth_hz | dead_time_us | kh_basis | kh_scan | th_band_lookup | target_temp_rise。'
+      + '⚠ L0 原按 50Hz 正弦计算；开启后仅新增 *_vfd 字段，不覆写既有温升/损耗/效率。',
+  },
+  ip67: {
+    type: 'object',
+    description: 'v0.6.8 P2：IP67 结构技术点 S1~S8 登记与可喂入项抽取（IEC 60034-5 / GB/T 4942.1）。'
+      + '默认 OFF（env DSH_L0_IP67 亦可开）。joint_seal | shaft_seal | terminal_box_gland | '
+      + 'lead_capillary_blocked | breather | coating(C3/C4/C5) | insulation_life_years | '
+      + 'tests{ip6x,ipx7,insulation_retest,thermal_cycle}。'
+      + '⚠ CM 域在场即参与均分，不达标值喂入会拉低 F。',
+  },
+  vfd_measures: {
+    type: 'boolean',
+    description: 'v0.6.8 P2：仅 vfd 开启时生效。评估四项降损措施（滤波器/独立风机/加大机座/'
+      + '低损耗硅钢）各自的降温效果与达标性。',
   },
 }
 
@@ -130,6 +153,10 @@ export function runL0Pipeline(rawArgs, config = {}) {
     params_list: feasibleRows, top_n: topN, sort_by: sortBy,
     ...(args.mc_samples != null ? { mc_samples: args.mc_samples } : {}),
     ...(args.mc_ci_level != null ? { mc_ci_level: args.mc_ci_level } : {}),
+    // v0.6.8 P2：变频 + IP67 建模透传（normalizeSpec 对未登记嵌套对象原样保留）
+    ...(args.vfd != null ? { vfd: args.vfd } : {}),
+    ...(args.ip67 != null ? { ip67: args.ip67 } : {}),
+    ...(args.vfd_measures != null ? { vfd_measures: args.vfd_measures } : {}),
   }, chainCfg)
 
   // ---- v0.5.3 P0-1：密度收敛自检（默认 OFF）----
@@ -274,6 +301,50 @@ export function runL0Pipeline(rawArgs, config = {}) {
     }
   }
 
+  // ---- v0.6.8 P2：变频 + IP67 紧凑摘要（明细在结果行的 vfd_model / ip67_model 内）----
+  // L0 全程按 50Hz 理想正弦计算；变频附加谐波损耗此前完全未建模 ⇒ 既有温升是正弦工况值。
+  // 这里只回紧凑顶层摘要，让调用方一眼看到「是否施加了变频修正 + 温升越限与否」，
+  // 逐行明细（损耗拆分/灵敏度扫描/四项措施/EC 可喂入项）留在结果行，避免撑爆上下文。
+  const rowWithVfd = (estimate.results ?? []).find((r) => r?.vfd_model) ?? null
+  const rowWithIp67 = (estimate.results ?? []).find((r) => r?.ip67_model) ?? null
+  const vfdM = rowWithVfd?.vfd_model ?? null
+  const ip67M = rowWithIp67?.ip67_model ?? null
+  const vfdIp67Warnings = []
+  for (const r of (estimate.results ?? [])) {
+    for (const w of (r?.vfd_model?.warnings ?? [])) vfdIp67Warnings.push(w)
+    for (const w of (r?.ip67_model?.warnings ?? [])) vfdIp67Warnings.push(w)
+  }
+  const vfdSummary = vfdM ? {
+    applied: true,
+    k_h: vfdM.k_h,
+    k_h_source: vfdM.k_h_source,
+    k_h_filter: vfdM.k_h_filter,
+    harmonic_factor: vfdM.temp?.harmonic_factor ?? null,
+    temp_rise_sine: vfdM.temp?.sine ?? null,
+    temp_rise_vfd: vfdM.temp?.vfd ?? null,
+    temp_rise_vfd_min_speed: vfdM.temp?.vfd_min_speed ?? null,
+    insulation_limit_k: vfdM.temp?.limit_k ?? null,
+    over_limit_k: vfdM.temp?.over_limit_k ?? null,
+    efficiency_vfd: vfdM.efficiency?.vfd ?? null,
+    cooling_fan: vfdM.cooling?.fan ?? null,
+    ec_feed_declared_n: vfdM.ec_feed?.declared_n ?? 0,
+    ec_feed_gap_n: vfdM.ec_feed?.gap_n ?? 0,
+    measures_n: vfdM.measures?.measures?.length ?? 0,
+    measures_feasible: vfdM.measures?.recommendation?.feasible ?? null,
+    note: '⚠ 结果行的 temp_rise / total_loss / efficiency 仍为**正弦口径**（不覆写）；'
+      + '变频工况判定请读 *_vfd 字段。',
+  } : null
+  const ip67Summary = ip67M ? {
+    applied: true,
+    standard: ip67M.standard,
+    declared_n: ip67M.declared_n,
+    gap_n: ip67M.gap_n,
+    verified: ip67M.verified,
+    feedable_n: ip67M.feedable_n,
+    feedable: Object.keys(ip67M.feedable ?? {}),
+    feed_risk: ip67M.feed_risk,
+  } : null
+
   return {
     // 矩阵层告警（如 OD_LIMIT_CLAMPED）放在最前，保证调用方第一眼看到
     // 矩阵层告警（OD_LIMIT_CLAMPED / MATRIX_TRUNCATED / COOLING_FALLBACK /
@@ -282,6 +353,14 @@ export function runL0Pipeline(rawArgs, config = {}) {
       const w = [...(matrix.warnings ?? [])]
       if (density && !density.converged) {
         w.push({ code: 'DENSITY_NOT_CONVERGED', level: 'warning', ...density, message: density.note })
+      }
+      // v0.6.8 P2：变频/IP67 建模告警（去重后按代码聚合，避免 TopN 重复刷屏）
+      for (const code of [...new Set(vfdIp67Warnings)]) {
+        w.push({
+          code,
+          level: 'warning',
+          message: VFD_IP67_WARNING_TEXT[code] ?? code,
+        })
       }
       return w
     })(),
@@ -307,6 +386,9 @@ export function runL0Pipeline(rawArgs, config = {}) {
     },
     // v0.5.3 P0-1：默认 null（未开启自检）；开启后给出两档密度漂移量
     density,
+    // v0.6.8 P2：变频 + IP67 紧凑摘要（默认 null = 纯正弦口径，与旧版一致）
+    vfd: vfdSummary,
+    ip67: ip67Summary,
     // v0.5.5 P2-1：verdict 密度无关化声明——status 仅由物理规则驱动，密度自检永不进 status
     verdict_density_independent: true,
     // v0.5.4 P1-5：默认 null（leverage_log=false）；开启后回紧凑杠杆聚合

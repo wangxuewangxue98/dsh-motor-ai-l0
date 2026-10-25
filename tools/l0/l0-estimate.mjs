@@ -35,6 +35,7 @@ import { predictAnalyticBatch, analyticModeOf, ANALYTIC_MINC } from './analytic-
 import { getUsageSink, logUsage } from '@wangxue98/dsh-motor-ai-core'
 import { assertFreeQuota, QuotaExceededError } from '../../lib/quota.mjs'
 import { assessApplicability, scenarioFromMatrix } from '@wangxue98/dsh-motor-ai-core'
+import { resolveVfdSpec, resolveIp67Spec, runVfdIp67 } from './vfd-ip67-model.mjs'
 
 /** 工具入参声明 */
 export const TOOL_PARAMS = {
@@ -57,6 +58,30 @@ export const TOOL_PARAMS = {
     type: 'number',
     description: 'v0.4.0 P2：置信水平，默认 0.95（可选 0.90/0.99），仅 mc_samples>0 时生效',
   },
+  vfd: {
+    type: 'object',
+    description: 'v0.6.8 P2：变频驱动建模（M1~M7）。默认 OFF（env DSH_L0_VFD 亦可开）。'
+      + '给出本对象即视为开启。字段：filter(none/dvdt/sine) | cable_m | k_h(显式覆盖) | '
+      + 'fan(self/independent) | min_speed_rpm | dc_bus_v | shaft_current_a | bearing | '
+      + 'insulation_coordination_margin | surge_withstand_ratio | insulation_life_years | '
+      + 'emc_margin_db | immunity_level | control | field_weakening_ratio | torque_bandwidth_hz | '
+      + 'dead_time_us | kh_basis(total/electromagnetic) | kh_scan | th_band_lookup | target_temp_rise。'
+      + '⚠ L0 原按 50Hz 理想正弦计算，开启后仅**新增** *_vfd 字段，不覆写既有 temp_rise/loss/efficiency。',
+  },
+  ip67: {
+    type: 'object',
+    description: 'v0.6.8 P2：IP67 结构技术点 S1~S8 登记与可喂入项抽取（IEC 60034-5 / GB/T 4942.1）。'
+      + '默认 OFF（env DSH_L0_IP67 亦可开）。字段：joint_seal | shaft_seal | terminal_box_gland | '
+      + 'lead_capillary_blocked | breather | coating(C3/C4/C5) | insulation_life_years | '
+      + 'tests{ip6x,ipx7,insulation_retest,thermal_cycle}。'
+      + '⚠ CM 域在场即参与均分：仅当该域全部检查点达标时才喂入，否则宁可 abstain（喂不达标值会拉低 F）。',
+  },
+  vfd_measures: {
+    type: 'boolean',
+    description: 'v0.6.8 P2：仅 vfd 开启时生效。开启后对每行评估四项降损措施'
+      + '（①dv/dt 或正弦波滤波器 ②独立风机/加大风量 ③加大机座或铁心 ④低损耗硅钢/优化绕组）'
+      + '各自降温效果与达标性。措施③为几何变更，会触发重估（仅限返回行，不影响配额）。',
+  },
   baseline_params: {
     type: 'object',
     additionalProperties: true,
@@ -68,10 +93,12 @@ export const TOOL_PARAMS = {
 }
 
 /** 允许参与排序的字段白名单（防注入 sort 到任意键） */
-export const SORTABLE_FIELDS = ['efficiency', 'efficiency_raw', 'torque_density', 'temp_rise', 'total_loss', 'power']
+export const SORTABLE_FIELDS = ['efficiency', 'efficiency_raw', 'torque_density', 'temp_rise', 'total_loss', 'power',
+  // v0.6.8 P2：变频修正口径（仅 vfd 开启时行内才有值；未开启时恒 null ⇒ sortKey 回落 0，行为不变）
+  'temp_rise_vfd', 'total_loss_vfd', 'efficiency_vfd_raw']
 
 /** temp_rise 为「越小越好」，其余为「越大越好」 */
-const ASCENDING_FIELDS = new Set(['temp_rise', 'total_loss'])
+const ASCENDING_FIELDS = new Set(['temp_rise', 'total_loss', 'temp_rise_vfd', 'total_loss_vfd'])
 
 const r1 = (v) => Math.round(v * 10) / 10
 const r2 = (v) => Math.round(v * 100) / 100
@@ -136,6 +163,50 @@ function applyMonteCarlo(topRows, mcSamples, mcCiLevel, estimateOpts) {
       const mc = monteCarloRow(r.params, r, mcSamples, mcCiLevel, estimateOpts)
       if (mc) r.mc = mc
     } catch { /* MC 异常静默，保留点估计 */ }
+  }
+  return true
+}
+
+/**
+ * v0.6.8 P2：对结果集施加变频 + IP67 建模（默认 OFF，零回归）
+ * ---------------------------------------------------------------------------
+ * L0 全程按 **50Hz 理想正弦**计算；变频工况的谐波附加损耗与低速冷却衰减此前完全未建模
+ * （grep `vfd|inverter|变频` 在 param-schema/pipeline 无命中）⇒ 既有温升是正弦工况值。
+ *
+ * 本函数只在 vfd/ip67 显式开启时介入，且**只新增字段、不覆写**（*_vfd / vfd_model /
+ * ip67_model），既有 temp_rise / total_loss / efficiency 保持正弦口径不变 —— 复用齿磁密
+ * 双口径事故的教训：口径升级绝不能静默改写旧字段。
+ *
+ * 必须在排序**之前**调用：sort_by='temp_rise_vfd' 需要该字段已就位。
+ * @param {object[]} results 估算结果数组（原地附加字段）
+ * @param {object} args 已归一化的入参
+ * @param {object} [opts] { estimateFn } 措施③（几何变更）重估回调
+ * @returns {boolean} 是否介入
+ */
+function applyVfdIp67Models(results, args, opts = {}) {
+  if (!Array.isArray(results) || !results.length) return false
+  const vfdSpec = resolveVfdSpec(args.vfd)
+  const ip67Spec = resolveIp67Spec(args.ip67)
+  if (!vfdSpec.enabled && !ip67Spec.enabled) return false
+
+  const withMeasures = args.vfd_measures === true
+  for (const r of results) {
+    try {
+      const row = r?.params ?? {}
+      const { vfd_model, ip67_model } = runVfdIp67(
+        r, row,
+        { vfd: vfdSpec, ip67: ip67Spec },
+        { ...opts, with_measures: withMeasures },
+      )
+      if (vfd_model) {
+        r.vfd_model = vfd_model
+        // 顶层平铺高频量（供 sort_by 与下游读取）；原字段不受影响
+        r.temp_rise_vfd = vfd_model.temp?.vfd ?? null
+        r.total_loss_vfd = vfd_model.losses?.vfd?.total_loss ?? null
+        r.efficiency_vfd_raw = vfd_model.efficiency?.vfd ?? null
+      }
+      if (ip67_model) r.ip67_model = ip67_model
+    } catch { /* 建模异常不阻断点估计：该行保持正弦口径 */ }
   }
   return true
 }
@@ -400,6 +471,8 @@ export function runL0Estimate(rawArgs, config = {}) {
       }
 
       if (results.length === paramsList.length) {
+        // v0.6.8 P2：变频 + IP67 建模（默认 OFF；须在排序前，供 sort_by=temp_rise_vfd 使用）
+        applyVfdIp67Models(results, args, { estimateFn: (r2) => quickL0Estimate(r2, estimateOpts(r2)) })
         const elapsed = Date.now() - started
         const ascending = ASCENDING_FIELDS.has(sortBy)
         results.sort((a, b) => (ascending
@@ -500,6 +573,8 @@ export function runL0Estimate(rawArgs, config = {}) {
       }
 
       if (results.length === paramsList.length) {
+        // v0.6.8 P2：变频 + IP67 建模（默认 OFF；须在排序前，供 sort_by=temp_rise_vfd 使用）
+        applyVfdIp67Models(results, args, { estimateFn: (r2) => quickL0Estimate(r2, estimateOpts(r2)) })
         const elapsed = Date.now() - started
         const ascending = ASCENDING_FIELDS.has(sortBy)
         results.sort((a, b) => (ascending
@@ -578,6 +653,11 @@ export function runL0Estimate(rawArgs, config = {}) {
     }
   }
 
+  // v0.6.8 P2：变频 + IP67 建模（默认 OFF；须在排序前，供 sort_by=temp_rise_vfd 使用）
+  const vfdApplied = applyVfdIp67Models(results, args, {
+    estimateFn: (r2) => quickL0Estimate(r2, estimateOpts(r2)),
+  })
+
   const ascending = ASCENDING_FIELDS.has(sortBy)
   results.sort((a, b) => (ascending
     ? sortKey(a, sortBy) - sortKey(b, sortBy)
@@ -654,6 +734,13 @@ export function runL0Estimate(rawArgs, config = {}) {
     mc_watermark: mcSamples > 0
       ? `本批 TopN 已附蒙特卡洛效率置信区间（N=${mcSamples}, 水平 ${mcCiLevel}）。` +
         `排序请结合效率_ci 水位线：点估计低于 ci_low 的方案在 ±3% 参数误差带下可能不达标。`
+      : undefined,
+    // v0.6.8 P2：变频 + IP67 建模状态（默认 false = 纯正弦口径，与旧版逐字节一致）
+    vfd_applied: vfdApplied,
+    vfd_note: vfdApplied
+      ? '已施加变频建模：结果行新增 temp_rise_vfd / total_loss_vfd / efficiency_vfd_raw 与 vfd_model。'
+        + '⚠ 既有 temp_rise / total_loss / efficiency **仍为正弦口径**（不覆写，防双口径误读）；'
+        + '变频工况判定请读 *_vfd 字段。'
       : undefined,
     // ---- 转矩口径声明（v0.2.5 P0 → v0.4.0 dual_field_resolver 升级）----
     // 期望输出 torque（排序口径）= spec 9550·P/n 精确值；可达能力 torque_capability
