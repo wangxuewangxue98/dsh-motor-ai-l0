@@ -65,7 +65,7 @@ export const TOOL_PARAMS = {
   stator_od_limit: { type: 'number', description: '定子外径上限 (mm)。缺省时按基准尺寸自伸缩（≈扫描空间上界×1.05，向上取整到 50mm），保证默认路径不被夹紧；显式传入（机座号 / 隔爆外壳等硬约束）则严格尊重，夹紧时会回吐 warning' },
   base_diameter: { type: 'number', description: '基准内径中心 (mm)，覆盖经验估算' },
   base_length: { type: 'number', description: '基准铁心长度中心 (mm)' },
-  count: { type: 'number', description: '目标方案数，默认 20' },
+  count: { type: 'number', description: '目标方案数，默认 1000' },
   line_freq_hz: { type: 'number', description: `电源频率 (Hz)，默认 ${DEFAULT_LINE_FREQ_HZ}。同步转速 n_sync=120·f/p，60Hz 电网与 VFD 变频工况必须显式传入，否则 V16 会误判超同步` },
   insulation_class: { type: 'string', description: `绝缘等级 B/F/H，默认 ${DEFAULT_INSULATION_CLASS}。B=80K / F=105K / H=125K 温升限值` },
 }
@@ -254,7 +254,7 @@ export function buildParamMatrix(rawSpec, config = {}) {
   const coolingInput = spec.cooling
   const cooling = COOLING_ALLOWED.includes(spec.cooling) ? spec.cooling : 'forced_air'
   // 外径上限见下方 dSteps/lSteps 之后 —— 默认值需依赖基准尺寸与极数表，无法在此定出
-  const requestedCountEarly = Math.max(1, Math.floor(spec.count ?? 20))
+  const requestedCountEarly = Math.max(1, Math.floor(spec.count ?? 1000))
   // v0.5.3 P0-2 严格模式（默认关）：要求"绝不截断"的调用方可以 fail-fast，
   // 而不是拿到被静默夹断的矩阵还以为跑满了。默认仍走告警，避免打断既有脚本。
   if (config.strictMaxMatrixSize === true && requestedCountEarly > maxMatrixSize) {
@@ -502,7 +502,7 @@ export function buildParamMatrix(rawSpec, config = {}) {
   // truncated 必须拿「原始请求量」比，不能拿被 maxMatrixSize 夹断后的 count 比 ——
   // 后者恒为 false，会掩盖真实截断。
   const returned = matrix.slice(0, maxMatrixSize)
-  const requestedCount = Math.max(1, Math.floor(spec.count ?? 20))
+  const requestedCount = Math.max(1, Math.floor(spec.count ?? 1000))
   const truncated = requestedCount > returned.length
   // v0.4.0 P0-4：截断必须**显式告警**，不能只埋一个 boolean。
   //   真实场景（spec.count=10000 被 maxMatrixSize=2000 夹断）原本静默丢 8000 行，

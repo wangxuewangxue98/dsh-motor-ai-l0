@@ -5,6 +5,41 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.6.6] - 2026-10-25 — 绕组锁定（Bg-Fix 治本）+ count 缺省 1000
+
+> **性质：additive（winding-lock 默认 OFF 零回归）+ 参数缺省调整（count 20→1000，候选池放大，需知情）。**
+
+1. **P2-A 绕组锁定 `winding-lock`**（core `formula-engine.mjs`，env `DSH_L0_WINDING_LOCK` / opts `windingLock`，**默认 OFF**）：
+   - 修复 `deriveElectricalClosure` **静默覆盖入参绕组**：原实现只按 E 平衡重算匝数
+     （`turnsIdeal = uph/(4.44·f·φ·kw)` 后 `round()`），`params.turns_per_coil` /
+     `params.conductors_per_slot` 从未被消费（实测入参 6/24/144 输出逐位相同）。
+   - lock ON 且入参绕组有效时：每相串联匝数 `N = (Qs/3)·(cps/2)/a`（`conductors_per_slot` 优先，
+     与 RMxprt 求解器口径一致；`turns_per_coil` 按标准语义"每线圈匝数"兜底），
+     E 平衡闭合 `Φ = Uph/(4.44·f·N·kw_eff)`，`Bg_locked = Φ/极距面积`。
+   - `kw_eff = 0.697`（65 台 RMxprt 真值反算 mean、CV=5.1%；与 `WINDING_FACTOR=0.95`
+     的差额主要为斜槽削弱）；优先级 `opts.kwEff > env DSH_L0_KW_EFF > 0.697`。
+   - 生效链路：`bgForFlux = bg_locked ?? bg_actual ?? intent` ⇒ 实际口径磁密
+     （`*_flux_density_actual`，质量门 V08 同口径）与 4 个新回显字段
+     （`winding_lock` / `bg_locked_t` / `kw_eff_used` / `air_gap_flux_density_effective`，
+     已登记 `L0_NATIVE_FIELDS` 白名单）。
+   - ⚠ 意图口径（`*_flux_density`）与铁损 B_eff 口径**不变**——v3 铁损标定红线不动。
+   - **65 台真值验收**：Bg MAPE 77.5%→**4.7%**、pearson 0.030→**0.988**；
+     Bt pearson −0.027→**0.961**（区分度恢复；残余偏差 −32.5% 归因齿宽口径，
+     走显式 `params.tooth_width` 通道——已实证生效：tw=3.92⇒Bt 2.96T 逐位吻合公式）。
+2. **`motor_param_matrix` / `motor_l0_pipeline` 的 `count` 缺省 20 → 1000**：
+   - 动机：候选池过小使上层设计引擎（MD-SDE）的槽数/机座扫描密度不足。
+   - ⚠ **行为变更**：不传 `count` 的调用候选池从 20 放大到 1000（`maxMatrixSize` 默认 2000，
+     不触发截断）；`strictMaxMatrixSize=true` 且 `maxMatrixSize<1000` 的调用方将由静默通过
+     转为抛错（原 20 不触发）——此类调用需显式传 `count` 或提高 `maxMatrixSize`。
+   - SKILL.md 文档同步（原"缺省 24"为过期值，实为 20）。
+3. **门禁 `scripts/verify_winding_lock.mjs`**（14 项）：默认 OFF / env 通道 / opts 通道 /
+   零回归锚点 / 公式同口径重算自证 / 入参消费 / kw_eff 双通道 / 新字段透传 /
+   closure 回显 / 65 台真值验收门（Bg MAPE<10% 且 pearson>0.9）。
+   已做**反向破坏验证**：默认改 ON ⇒ 4 项变红；短路入参消费 ⇒ 6 项变红；恢复后双路回绿。
+4. **门禁回归**：`scripts/verify.mjs` **135/135 通过**（含 count 改动与 winding-lock）。
+5. 诚实边界：kw_eff=0.697 的 65 台样本中 6/8 极为 EMF 合成绕组（4 极 37 台为真实绕组），
+   跨族泛化需真实冲片绕组复核；报告 `output/p2_bg_fix_plan_report.md` §10 同款披露。
+
 ## [0.6.5] - 2026-10-20 — 修复 submit_resolved_case 致插件重启激活失败（严重）
 
 > **性质：hotfix（rc.20/0.6.4 起新增工具的激活级缺陷；修复后零行为变化）。**

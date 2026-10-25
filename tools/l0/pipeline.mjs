@@ -39,7 +39,7 @@ export const TOOL_PARAMS = {
   stator_od_limit: { type: 'number', description: '定子外径上限 (mm)。缺省时按基准尺寸自伸缩（≈扫描空间上界×1.05，向上取整到 50mm），保证默认路径不被夹紧；显式传入（机座号 / 隔爆外壳等硬约束）则严格尊重，夹紧时回吐 OD_LIMIT_CLAMPED 告警' },
   base_diameter: { type: 'number', description: '基准内径中心 (mm)' },
   base_length: { type: 'number', description: '基准铁心长度中心 (mm)' },
-  count: { type: 'number', description: '目标方案数，默认 20（广筛场景可给 120）' },
+  count: { type: 'number', description: '目标方案数，默认 1000（广筛场景可给更大值）' },
   top_n: { type: 'number', description: '回吐前 N 个方案，默认 10（聚合工具已封顶，避免回吐全量触发截断）' },
   sort_by: {
     type: 'string',
@@ -109,7 +109,7 @@ export function runL0Pipeline(rawArgs, config = {}) {
   // 否则「外径被夹紧」这类会扭曲结论的异常在聚合链路里会被静默吞掉。
   const matrix = buildParamMatrix(args, chainCfg)
   const allRows = matrix.matrix
-  const requestedCount = Math.max(1, Math.floor(args.count ?? 20))
+  const requestedCount = Math.max(1, Math.floor(args.count ?? 1000))
 
   // ---- 第 2 步：批量物理校验 ----
   // include_reports: true —— v0.5.4 P1-5 leverage_log 需要逐行 headroom；
