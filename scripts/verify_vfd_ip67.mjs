@@ -18,8 +18,9 @@ import { dirname, join } from 'node:path'
 import {
   deriveKh, coolingModel, totalLossUnder, deriveOutputPower, applyVfdModel, khScan, thBandOf,
   evaluateVfdMeasures, buildVfdEcFeed, dcBusVoltage, buildIp67Model,
-  resolveVfdSpec, resolveIp67Spec, runVfdIp67,
+  resolveVfdSpec, resolveIp67Spec, runVfdIp67, vfdDefaults,
   KH_TABLE, TH_BANDS_MDSDE, VFD_LIMITS, IP67_ITEMS, VFD_IP67_WARNING_TEXT,
+  CARRIER_DEFAULT_KHZ, CARRIER_SANITY_KHZ, FAN_DEFAULT,
 } from '../tools/l0/vfd-ip67-model.mjs'
 import { runL0Estimate, SORTABLE_FIELDS } from '../tools/l0/l0-estimate.mjs'
 import { runL0Pipeline } from '../tools/l0/pipeline.mjs'
@@ -171,9 +172,19 @@ console.log('\n【E】M3 低速冷却衰减（未澄清不出数）')
 ok(coolingModel({ fan: 'independent' }, ROW).derate === 1, 'E1 独立风机无衰减')
 const cSelf = coolingModel({ fan: 'self', min_speed_rpm: 492.5, rated_speed_rpm: 985 }, ROW)
 ok(near(cSelf.derate, 2, 1e-3) && near(cSelf.q_factor, 0.5, 1e-3), 'E2 自扇半速 ⇒ 温升×2（Q∝n）')
-const cUnknown = coolingModel({}, ROW)
-ok(cUnknown.derate === null && cUnknown.warnings.includes('VFD_FAN_UNSPECIFIED'),
-  'E3 风机型式未澄清 ⇒ **不给数值** + 告警（不臆造系数）')
+// ⚠ 口径变更（2026-10-26）：P0-1 澄清为「变频电机默认独立风机」⇒ 未声明时
+//   derate=1（真实物理：风量与转速解耦），但必须带 fan_source='default' + 告警
+const cDefault = coolingModel({}, ROW)
+ok(cDefault.fan === 'independent' && cDefault.fan_source === 'default'
+  && cDefault.derate === 1 && cDefault.q_factor === 1
+  && cDefault.warnings.includes('VFD_FAN_DEFAULTED'),
+  'E3 风机未声明 ⇒ 按**默认独立风机**出数（derate=1）+ source 标记 + 告警（默认值不冒充声明值）',
+  JSON.stringify(cDefault))
+ok(coolingModel({ fan: 'banana' }, ROW).fan === 'independent'
+  && coolingModel({ fan: 'banana' }, ROW).warnings.includes('VFD_FAN_UNKNOWN'),
+  'E3b 非法风机取值 ⇒ 回落默认 + 告警（不静默按原值算）')
+ok(coolingModel({ fan: ' Self ' }, ROW).fan === 'self',
+  'E3c 风机取值大小写/空格不敏感（" Self " ⇒ self）')
 ok(coolingModel({ fan: 'self' }, ROW).derate === null
   && coolingModel({ fan: 'self' }, ROW).warnings.includes('VFD_MIN_SPEED_MISSING'),
   'E4 缺最低转速 ⇒ 不出数 + 告警')
@@ -346,6 +357,59 @@ ok(sortedVfd.length > 0 && sortedVfd.every((v, i) => i === 0 || v >= sortedVfd[i
 const pSortSine = runL0Pipeline({ ...SPEC, count: 40, top_n: 3, vfd: VFD_FULL, sort_by: 'temp_rise', write_handoff: false }, CFG)
 ok(JSON.stringify((pSortSine.results ?? []).map((r) => r.temp_rise))
   !== JSON.stringify(sortedVfd) || true, 'L9 两种排序键可分别使用（不互串）')
+
+// ──────────────────────────────────────────────────────────────
+console.log('\n【M】默认口径（载波 3000Hz / 风机 independent）—— 默认值 ≠ 声明值')
+
+ok(CARRIER_DEFAULT_KHZ === 3000, 'M1 载波默认 3000Hz（用户口径已常量化）')
+ok(FAN_DEFAULT === 'independent', 'M2 风机默认 independent（变频电机口径）')
+const dEmpty = vfdDefaults({})
+ok(dEmpty.carrier_khz === 3000 && dEmpty.carrier_source === 'default'
+  && dEmpty.warnings.includes('VFD_CARRIER_DEFAULTED'),
+  'M3 未声明载波 ⇒ 3000 + source=default + 告警', JSON.stringify(dEmpty))
+ok(dEmpty.fan === 'independent' && dEmpty.fan_source === 'default'
+  && dEmpty.warnings.includes('VFD_FAN_DEFAULTED'), 'M4 未声明风机 ⇒ independent + default + 告警')
+const dDeclared = vfdDefaults({ carrier_khz: 8000, fan: 'Self' })
+ok(dDeclared.carrier_khz === 8000 && dDeclared.carrier_source === 'declared'
+  && dDeclared.fan === 'self' && dDeclared.fan_source === 'declared'
+  && dDeclared.warnings.length === 0,
+  'M5 显式声明 ⇒ 走声明值且**无默认告警**', JSON.stringify(dDeclared))
+ok(vfdDefaults({ carrier_khz: -1 }).carrier_khz === 3000
+  && vfdDefaults({ carrier_khz: -1 }).warnings.includes('VFD_CARRIER_INVALID'),
+  'M6 非法载波 ⇒ 回落默认 + 告警（不静默用负值/NaN）')
+ok(vfdDefaults({ carrier_khz: 3000000 }).carrier_khz === 3000000
+  && vfdDefaults({ carrier_khz: 3000000 }).warnings.includes('VFD_CARRIER_OUT_OF_RANGE'),
+  'M7 越区间载波 ⇒ **只告警不钳位**（钳位=用臆造边界改数据）')
+ok(CARRIER_SANITY_KHZ[0] === 1000 && CARRIER_SANITY_KHZ[1] === 20000, 'M8 合理区间 [1k,20k]Hz 显式可断言')
+// 端到端：默认值必须穿透 opts 与 env **两条通道**（防只在一条路径生效）
+const mOpts = runL0Estimate({ params_list: MATRIX, top_n: 2, vfd: { filter: 'none', cable_m: 200 } }, CFG)
+ok(mOpts.results[0].vfd_model.carrier.khz === 3000
+  && mOpts.results[0].vfd_model.carrier.source === 'default',
+  'M9 端到端 opts 通道：载波默认 3000/default')
+ok(mOpts.results[0].vfd_model.cooling.fan === 'independent'
+  && mOpts.results[0].vfd_model.cooling.fan_source === 'default'
+  && mOpts.results[0].vfd_model.cooling.derate === 1,
+  'M10 端到端 opts 通道：风机默认 independent 且无衰减')
+const mEnv = withEnv('DSH_L0_VFD', '1', () => runL0Estimate({ params_list: MATRIX, top_n: 2 }, CFG))
+ok(mEnv.results[0].vfd_model.carrier.khz === 3000
+  && mEnv.results[0].vfd_model.cooling.fan === 'independent'
+  && mEnv.results[0].vfd_model.cooling.fan_source === 'default',
+  'M11 端到端 env 通道：同一默认口径（双通道纪律）')
+// 纪律：无标定 ⇒ k_h 不随载波变化（默认值/声明值都不得改变出数）
+const mC0 = applyVfdModel(EST, ROW, { filter: 'none', cable_m: 200 })
+const mC8 = applyVfdModel(EST, ROW, { filter: 'none', cable_m: 200, carrier_khz: 8000 })
+ok(mC0.k_h === mC8.k_h && mC0.temp.vfd === mC8.temp.vfd && mC0.losses.vfd.total_loss === mC8.losses.vfd.total_loss,
+  'M12 载波不参与 k_h 反解（3k 与 8k 出数一致 —— 无标定即不调，保守而非遗漏）',
+  `${mC0.k_h}/${mC0.temp.vfd} vs ${mC8.k_h}/${mC8.temp.vfd}`)
+ok(['VFD_CARRIER_DEFAULTED', 'VFD_CARRIER_INVALID', 'VFD_CARRIER_OUT_OF_RANGE',
+  'VFD_FAN_DEFAULTED', 'VFD_FAN_UNKNOWN'].every((c) => c in VFD_IP67_WARNING_TEXT),
+  'M13 新增 5 个告警码均有可读文案（防"有码无文"）')
+ok(modelSrc.includes('export const CARRIER_DEFAULT_KHZ = 3000')
+  && modelSrc.includes("export const FAN_DEFAULT = 'independent'"),
+  'M14 默认口径以源码常量落地（断点脚本可稳定破坏）')
+ok(/carrier_khz/.test(estSrc) && /carrier_khz/.test(pipeSrc)
+  && /默认 independent|默认独立风机/.test(estSrc) && /默认 independent/.test(pipeSrc),
+  'M15 两处 TOOL_PARAMS 均声明默认口径（防调用方不知道有默认值）')
 
 // ──────────────────────────────────────────────────────────────
 console.log(`\n══ 结果：${pass} 通过 / ${fail} 失败 ══`)

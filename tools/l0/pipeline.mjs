@@ -21,7 +21,7 @@ import { normalizeSpec } from '@wangxue98/dsh-motor-ai-core'
 import { buildParamMatrix } from './param-matrix.mjs'
 import { runDesignValidate } from './design-validate.mjs'
 import { runL0Estimate } from './l0-estimate.mjs'
-import { VFD_IP67_WARNING_TEXT } from './vfd-ip67-model.mjs'
+import { VFD_IP67_WARNING_TEXT, CARRIER_DEFAULT_KHZ } from './vfd-ip67-model.mjs'
 import { getUsageSink, logUsage } from '@wangxue98/dsh-motor-ai-core'
 import { assertFreeQuota, QuotaExceededError, newQuotaChain, withQuotaChain } from '../../lib/quota.mjs'
 
@@ -68,7 +68,8 @@ export const TOOL_PARAMS = {
   vfd: {
     type: 'object',
     description: 'v0.6.8 P2：变频驱动建模（M1~M7）。默认 OFF（env DSH_L0_VFD 亦可开）。'
-      + 'filter(none/dvdt/sine) | cable_m | k_h | fan(self/independent) | min_speed_rpm | '
+      + 'filter(none/dvdt/sine) | cable_m | k_h | fan(self/independent，**默认 independent**) | '
+      + `carrier_khz(**默认 ${CARRIER_DEFAULT_KHZ}Hz，仅记录**) | min_speed_rpm | `
       + 'shaft_current_a | bearing | insulation_coordination_margin | surge_withstand_ratio | '
       + 'insulation_life_years | emc_margin_db | immunity_level | control | field_weakening_ratio | '
       + 'torque_bandwidth_hz | dead_time_us | kh_basis | kh_scan | th_band_lookup | target_temp_rise。'
@@ -327,6 +328,9 @@ export function runL0Pipeline(rawArgs, config = {}) {
     over_limit_k: vfdM.temp?.over_limit_k ?? null,
     efficiency_vfd: vfdM.efficiency?.vfd ?? null,
     cooling_fan: vfdM.cooling?.fan ?? null,
+    cooling_fan_source: vfdM.cooling?.fan_source ?? null,
+    carrier_khz: vfdM.carrier?.khz ?? null,
+    carrier_source: vfdM.carrier?.source ?? null,
     ec_feed_declared_n: vfdM.ec_feed?.declared_n ?? 0,
     ec_feed_gap_n: vfdM.ec_feed?.gap_n ?? 0,
     measures_n: vfdM.measures?.measures?.length ?? 0,

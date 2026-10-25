@@ -67,6 +67,76 @@ export const CABLE_REF_M = [50, 300]
 /** k_h 物理钳位（防负值/荒谬值） */
 export const KH_CLAMP = [0, 0.30]
 
+// ---------------------------------------------------------------------------
+// 默认口径（用户 2026-10-26 明确答复，写死为常量以便门禁断言）
+// ---------------------------------------------------------------------------
+
+/** 载波频率默认值 3kHz（用户口径：变频电机按 3kHz 计） */
+export const CARRIER_DEFAULT_KHZ = 3000
+/**
+ * 载波频率合理区间（**只告警、不钳位** —— 钳位等于用臆造边界改写用户数据）。
+ * 常见低压变频器 2~16kHz，故取 1~20kHz 作"值得提示"的边界。
+ */
+export const CARRIER_SANITY_KHZ = [1000, 20000]
+/**
+ * 风机型式默认值：**独立风机**（用户口径 2026-10-26「变频电机默认按独立风机」）。
+ * ⚠ 此前 P0-1 未澄清时本模块**不出数**（derate=null + 告警）；口径澄清后改为默认值，
+ *   但仍须显式标记 `fan_source='default'` + 告警，防止"默认值被当成实测声明"误喂。
+ */
+export const FAN_DEFAULT = 'independent'
+export const FAN_ALLOWED = ['self', 'independent']
+
+/**
+ * vfd 默认口径归一化（载波频率 + 风机型式）
+ * 纪律：**默认值必须自带 source 标记与告警**，绝不静默冒充声明值。
+ * @param {object} vfd
+ * @returns {{carrier_khz:number, carrier_source:'declared'|'default',
+ *            fan:'self'|'independent', fan_source:'declared'|'default', warnings:string[]}}
+ */
+export function vfdDefaults(vfd = {}) {
+  const warnings = []
+
+  // ---- 载波频率 ----
+  const rawC = vfd?.carrier_khz
+  const nC = Number(rawC)
+  let carrier = CARRIER_DEFAULT_KHZ
+  let carrierSource = 'default'
+  if (rawC !== undefined && rawC !== null && rawC !== '') {
+    if (Number.isFinite(nC) && nC > 0) {
+      carrier = nC
+      carrierSource = 'declared'
+      if (nC < CARRIER_SANITY_KHZ[0] || nC > CARRIER_SANITY_KHZ[1]) {
+        warnings.push('VFD_CARRIER_OUT_OF_RANGE')
+      }
+    } else {
+      warnings.push('VFD_CARRIER_INVALID')
+    }
+  } else {
+    warnings.push('VFD_CARRIER_DEFAULTED')
+  }
+
+  // ---- 风机型式（去空格 + 大小写不敏感；非法取值回落默认并告警，不静默放过）----
+  const rawFan = String(vfd?.fan ?? '').trim().toLowerCase()
+  let fan = FAN_DEFAULT
+  let fanSource = 'default'
+  if (FAN_ALLOWED.includes(rawFan)) {
+    fan = rawFan
+    fanSource = 'declared'
+  } else if (rawFan) {
+    warnings.push('VFD_FAN_UNKNOWN')
+  } else {
+    warnings.push('VFD_FAN_DEFAULTED')
+  }
+
+  return {
+    carrier_khz: carrier,
+    carrier_source: carrierSource,
+    fan,
+    fan_source: fanSource,
+    warnings,
+  }
+}
+
 /**
  * 电缆长度分位（0~1）：<50m→0，>300m→1，未知→0.5
  * @param {number|undefined} cableM
@@ -134,44 +204,46 @@ export function deriveKh(vfd = {}) {
 
 /**
  * 冷却模型（附件 M3）：同轴自扇时 Q ∝ n ⇒ 散热随转速下降；独立风机无衰减。
- * 未澄清风机型式时 **不给数值**（回 null + 告警），避免用臆造系数出数。
+ * 风机型式未声明时按用户口径 **默认独立风机**（`fan_source='default'` + 告警），
+ * ⚠ 变更史：此前 P0-1 未澄清 ⇒ derate=null 不出数；2026-10-26 用户明确「变频电机默认
+ *   独立风机」后改为默认值。默认值**必须带 source 与告警**，防被误当实测声明。
  * @param {object} vfd
  * @param {object} row 参数行（取 speed_rpm 作额定转速）
  */
 export function coolingModel(vfd = {}, row = {}) {
-  const fan = String(vfd.fan ?? '').toLowerCase()
+  const d = vfdDefaults(vfd)
+  const fan = d.fan
+  const fanWarn = d.warnings.filter((w) => w === 'VFD_FAN_UNKNOWN' || w === 'VFD_FAN_DEFAULTED')
   const rated = Number(vfd.rated_speed_rpm ?? row?.speed_rpm)
   const min = Number(vfd.min_speed_rpm)
 
   if (fan === 'independent') {
     return {
-      fan: 'independent', speed_ratio: null, q_factor: 1, derate: 1,
-      warnings: [],
-      note: '独立轴流风机：风量与转速解耦，低速段无冷却衰减。',
-    }
-  }
-  if (fan !== 'self') {
-    return {
-      fan: null, speed_ratio: null, q_factor: null, derate: null,
-      warnings: ['VFD_FAN_UNSPECIFIED'],
-      note: '⚠ P0-1 未澄清：vfd.fan 必须为 "self"（同轴自扇）或 "independent"（独立风机）。'
-        + '同轴自扇在低速段风量∝转速，散热显著下降；未澄清前本模块**不估算**低速温升。',
+      fan: 'independent', fan_source: d.fan_source,
+      speed_ratio: null, q_factor: 1, derate: 1,
+      warnings: fanWarn,
+      note: d.fan_source === 'default'
+        ? 'vfd.fan 未声明 ⇒ 按用户口径「变频电机默认独立风机」取 independent（风量与转速解耦，'
+          + '低速段无冷却衰减）。⚠ 若实机为同轴自扇，须显式传 vfd.fan="self"，否则会**低估**低速温升。'
+        : '独立轴流风机：风量与转速解耦，低速段无冷却衰减。',
     }
   }
   if (!Number.isFinite(min) || !Number.isFinite(rated) || rated <= 0) {
     return {
-      fan: 'self', speed_ratio: null, q_factor: null, derate: null,
-      warnings: ['VFD_MIN_SPEED_MISSING'],
+      fan: 'self', fan_source: d.fan_source,
+      speed_ratio: null, q_factor: null, derate: null,
+      warnings: [...fanWarn, 'VFD_MIN_SPEED_MISSING'],
       note: '同轴自扇已确认，但缺 vfd.min_speed_rpm（或无法取到额定转速）⇒ 低速衰减量不可算。',
     }
   }
   const ratio = Math.min(1, Math.max(0.05, min / rated))
   return {
     fan: 'self',
+    fan_source: d.fan_source,
     speed_ratio: Math.round(ratio * 1000) / 1000,
     q_factor: Math.round(ratio * 1000) / 1000,
     derate: Math.round((1 / ratio) * 1000) / 1000,
-    warnings: [],
+    warnings: fanWarn,
     note: `同轴自扇：最低运行转速/额定 = ${ratio.toFixed(3)} ⇒ 风量比 ${ratio.toFixed(3)} ⇒ 温升放大 ${(1 / ratio).toFixed(2)}×（ΔT ∝ 1/Q）。`,
   }
 }
@@ -246,6 +318,10 @@ export function applyVfdModel(estimate, row = {}, vfd = {}, opts = {}) {
   const khInfo = deriveKh(vfd)
   warnings.push(...khInfo.warnings)
 
+  // 默认口径（载波频率 / 风机型式）—— 默认值一律带 source + 告警，不静默冒充声明值
+  const dflt = vfdDefaults(vfd)
+  warnings.push(...dflt.warnings)
+
   const basis = vfd.kh_basis === 'electromagnetic' ? 'electromagnetic' : 'total'
   const lossSine = totalLossUnder(0, cu ?? 0, fe ?? 0, mech ?? 0, basis)
   const lossVfd = totalLossUnder(khInfo.k_h, cu ?? 0, fe ?? 0, mech ?? 0, basis)
@@ -288,6 +364,18 @@ export function applyVfdModel(estimate, row = {}, vfd = {}, opts = {}) {
     k_h_filter_label: khInfo.label,
     k_h_cable_quantile: khInfo.cable_quantile,
     k_h_note: khInfo.note,
+    /** 载波频率（默认 3kHz；**k_h 不随其变化** —— 无标定依据，保守处理） */
+    carrier: {
+      khz: dflt.carrier_khz,
+      source: dflt.carrier_source,
+      sanity_range_hz: CARRIER_SANITY_KHZ.map((v) => v),
+      note: dflt.carrier_source === 'declared'
+        ? `载波频率 ${dflt.carrier_khz}Hz（vfd.carrier_khz 显式声明）。`
+          + '⚠ k_h 分档表是**经验总包值，不随载波频率调整**（缺标定依据）；'
+          + '若需区分载波影响，请提供不同载波下的实测损耗/温升以升级模型。'
+        : `vfd.carrier_khz 未声明 ⇒ 按默认 ${CARRIER_DEFAULT_KHZ}Hz 记录（仅记录，不参与 k_h 反解）。`
+          + '⚠ k_h 分档表不随载波频率调整（缺标定依据），故该默认值**不改变任何出数**。',
+    },
     /** 谐波附加损耗的计损基数口径 */
     kh_basis: basis,
     kh_basis_note: basis === 'total'
@@ -349,7 +437,7 @@ export function applyVfdModel(estimate, row = {}, vfd = {}, opts = {}) {
       passthrough: ['M4 绝缘 dv/dt', 'M5 轴承电蚀', 'M6 EMC/接地', 'M7 控制适配'],
       not_modeled: [
         '集肤/趋肤效应引起的铜耗额外增加（k_h 表为经验总包值，未分离）',
-        '载波频率对 k_h 的影响（缺少标定依据，故 k_h 不随 carrier_khz 变化 —— 这是保守处理，非遗漏）',
+        `载波频率（当前 ${dflt.carrier_khz}Hz）对 k_h 的影响（缺少标定依据，故 k_h 不随 carrier_khz 变化 —— 这是保守处理，非遗漏）`,
         '局部放电/PDIV 寿命物理模型',
         '轴电流产生机理（需变频器共模参数 + 轴承阻抗模型）',
       ],
@@ -892,8 +980,15 @@ export const VFD_IP67_WARNING_TEXT = {
   VFD_FILTER_UNKNOWN: 'vfd.filter 取值不在 none/dvdt/sine 内 —— 已按最保守档 none 反解 k_h，请核对取值。',
   VFD_CABLE_LENGTH_UNSPECIFIED: '未给 vfd.cable_m —— 电缆长度分位取 0.5（中值）反解 k_h。',
   VFD_KH_CLAMPED: 'vfd.k_h 超出物理范围 [0,0.30]，已被钳位。',
-  VFD_FAN_UNSPECIFIED: '⚠ P0-1 未澄清 vfd.fan（self=同轴自扇 / independent=独立风机）：同轴自扇低速段风量∝转速，散热显著下降，未澄清前低速温升不可算。',
+  VFD_FAN_DEFAULTED: 'vfd.fan 未声明 ⇒ 按用户口径「变频电机默认独立风机」取 independent（低速段无冷却衰减）。'
+    + '⚠ 若实机为同轴自扇（self），必须显式传 vfd.fan="self"，否则会低估低速温升。',
+  VFD_FAN_UNKNOWN: 'vfd.fan 取值不在 self/independent 内 ⇒ 已回落默认 independent 并告警（不静默按用户原值算）。',
   VFD_MIN_SPEED_MISSING: '已确认同轴自扇但缺 vfd.min_speed_rpm ⇒ 低速冷却衰减量不可算。',
+  VFD_CARRIER_DEFAULTED: `vfd.carrier_khz 未声明 ⇒ 按默认 ${CARRIER_DEFAULT_KHZ}Hz 记录。`
+    + '⚠ k_h 分档表为经验总包值，不随载波频率调整（缺标定依据），故该默认值不改变任何出数；'
+    + '若需区分载波影响，请提供不同载波下的实测损耗/温升。',
+  VFD_CARRIER_INVALID: `vfd.carrier_khz 非法（非正数或非数值）⇒ 已回落默认 ${CARRIER_DEFAULT_KHZ}Hz，请核对取值。`,
+  VFD_CARRIER_OUT_OF_RANGE: 'vfd.carrier_khz 超出常见变频器区间（1~20kHz）⇒ 仅记录提示，不做钳位（钳位等于用臆造边界改数据）；请核对是否单位写错（如误填 Hz）。',
   VFD_TEMP_OVER_LIMIT: '⚠ 变频修正后温升已超绝缘等级限值：热裕度不足为 P0 风险，须落实至少一项降损措施（vfd_measures=true 查看四项措施效果）。',
   VFD_LOW_SPEED_TEMP_EXTREME: '⚠ 低速段温升远超绝缘限值：Q∝n 线性外推在极低转速比下严重高估，结论应读作「该转速下同轴自扇不可行」而非具体数值；实机须改独立风机或限制最低转速。',
   IP67_TESTS_INCOMPLETE: 'IP67 试验验证不完整（IP6X / IPX7 / 绝缘复测 / 热-冷循环未全过）⇒ 结构防护等级未闭环。',
@@ -967,7 +1062,8 @@ export function runVfdIp67(estimate, row = {}, spec = {}, opts = {}) {
 export default {
   VFD_MODULE_VERSION, ENV_VFD, ENV_IP67, KH_TABLE, KH_FILTER_LABEL, CABLE_REF_M, KH_CLAMP,
   TH_BANDS_MDSDE, VFD_LIMITS, IP67_ITEMS,
-  cableQuantile, deriveKh, coolingModel, totalLossUnder, deriveOutputPower,
+  CARRIER_DEFAULT_KHZ, CARRIER_SANITY_KHZ, FAN_DEFAULT, FAN_ALLOWED,
+  cableQuantile, deriveKh, vfdDefaults, coolingModel, totalLossUnder, deriveOutputPower,
   applyVfdModel, khScan, thBandOf, evaluateVfdMeasures, buildVfdEcFeed, dcBusVoltage,
   buildIp67Model, resolveVfdSpec, resolveIp67Spec, runVfdIp67,
 }

@@ -1,4 +1,4 @@
-"""反向破坏验证：v0.6.8 变频/IP67 门禁必须能抓获五类破坏，恢复后回绿。
+"""反向破坏验证：v0.6.8 变频/IP67 门禁必须能抓获七类破坏，恢复后回绿。
 
 与 _break_tw_axis.py 同范式：破坏 l0 自身产品代码（tools/l0/vfd-ip67-model.mjs）
 ⇒ 先备份真源、finally 强制恢复，防脚本中断把产品代码留在破坏态。
@@ -105,15 +105,37 @@ try:
     assert rc != 0 and any("占位" in l or "EC050601" in l or "已声明证据" in l for l in fails), \
         "场景5 门禁未变红 —— 反编造守卫失效！"
 
+    print("\n=== 场景 6：载波默认 3000 → 5000（默认口径被改）—— 默认值守卫必须爆 ===")
+    shutil.copy2(BAK, MOD)
+    edit(MOD, "export const CARRIER_DEFAULT_KHZ = 3000",
+         "export const CARRIER_DEFAULT_KHZ = 5000")
+    rc, fails = run_gate()
+    print(f"  exit={rc}（期望非0）｜FAIL {len(fails)} 个")
+    for l in fails[:8]:
+        print("   ", l)
+    assert rc != 0 and any("载波默认" in l or "未声明载波" in l for l in fails), \
+        "场景6 门禁未变红 —— 载波默认值守卫失效！"
+
+    print("\n=== 场景 7：风机默认 independent → self（默认口径被改）—— 默认值守卫必须爆 ===")
+    shutil.copy2(BAK, MOD)
+    edit(MOD, "export const FAN_DEFAULT = 'independent'",
+         "export const FAN_DEFAULT = 'self'")
+    rc, fails = run_gate()
+    print(f"  exit={rc}（期望非0）｜FAIL {len(fails)} 个")
+    for l in fails[:8]:
+        print("   ", l)
+    assert rc != 0 and any("独立风机" in l or "风机" in l for l in fails), \
+        "场景7 门禁未变红 —— 风机默认值守卫失效！"
+
 finally:
     shutil.copy2(BAK, MOD)
     if os.path.exists(BAK):
         os.remove(BAK)
 
-print("\n=== 场景 6：恢复（从备份还原产品代码）===")
+print("\n=== 场景 8：恢复（从备份还原产品代码）===")
 rc, fails = run_gate()
 print(f"  exit={rc}（期望0）｜FAIL {len(fails)} 个")
 for l in fails[:8]:
     print("   ", l)
-assert rc == 0 and not fails, "场景6 恢复后未回绿！"
-print("\n反向破坏验证通过：五场景双路变红 + 恢复回绿")
+assert rc == 0 and not fails, "场景8 恢复后未回绿！"
+print("\n反向破坏验证通过：七场景双路变红 + 恢复回绿")

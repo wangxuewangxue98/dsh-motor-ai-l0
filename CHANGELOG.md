@@ -21,8 +21,13 @@
     计损基数可选 `total`（附件原口径，含机械耗）/ `electromagnetic`（仅铜+铁，物理更严）
   - **M2 附加温升**：`ΔT_vfd = ΔT_sine × (1+k_h)`（ΔT ∝ P_loss，热阻不变）
   - **M3 低速冷却衰减**：`fan='self'` 同轴自扇 Q ∝ n ⇒ 温升放大 1/(n_min/n_rated)；
-    `fan='independent'` 无衰减；**未澄清风机型式 ⇒ 不给数值 + 告警**（不臆造系数）；
-    外推超绝缘限值 1.5× ⇒ `VFD_LOW_SPEED_TEMP_EXTREME` 告警（不钳位，说明模型边界）
+    `fan='independent'` 无衰减；**默认口径 `fan='independent'`（用户口径 2026-10-26：变频电机按独立风机）**，
+    未声明也出数（`derate=1` + `fan_source='default'` + `VFD_FAN_DEFAULTED` 告警，不冒充实测声明）；
+    非法取值回落默认并告警（不静默按原值算）；外推超绝缘限值 1.5× ⇒ `VFD_LOW_SPEED_TEMP_EXTREME` 告警（不钳位，说明模型边界）
+  - **载波频率 `carrier_khz` 默认 3000Hz**（用户口径：变频电机按 3kHz 计）：未声明 ⇒ 按默认记录
+    + `carrier_source='default'` + `VFD_CARRIER_DEFAULTED` 告警；非法值回落默认；越区间 [1,20]kHz
+    **只告警不钳位**（钳位=用臆造边界改数据）；**仅记录、不参与 k_h 反解**（无标定依据，故 k_h 不随
+    carrier_khz 变化属保守而非遗漏）
   - **效率重推** `η_vfd = P_out/(P_out+P_loss_vfd)`（P_out 由 η 与总损反推）
   - **k_h 灵敏度扫描**：默认温升倍率 [1.00,1.05,1.10,1.15,1.20]；可选 `th_band_lookup`
     附加 MD-SDE TH 域 6 档（**外部口径，advisory，不进 L0 判据**）
@@ -51,15 +56,15 @@
    变频工况判定必须读 `temp_rise_vfd` / `total_loss_vfd` / `efficiency_vfd_raw`
 3. **env 通道**：`DSH_L0_VFD=1` / `DSH_L0_IP67=1`；显式 `enabled:false` 胜出 env
 4. **建模边界**（模块内 `limits.not_modeled` 已列）：集肤/趋肤效应、载波频率对 k_h 的影响
-   （无标定依据故 k_h 不随 carrier_khz 变化，属保守处理）、局部放电寿命模型、轴电流产生机理
+   （无标定依据故 k_h 不随 carrier_khz 变化，属保守处理；`vfd.carrier_khz` 默认 3000Hz 仅记录）、局部放电寿命模型、轴电流产生机理
 5. **CM 域喂入风险**：域在场即参与均分，诚实值不达标会**拉低** F；宁可 abstain
 
 ### 验证
 
 | 项 | 结果 |
 |---|---|
-| 新增门禁 verify_vfd_ip67 | 102/102 |
-| 反向破坏（默认改ON/拆M2/拆大小写/拆S7取值/允许编造） | 五场景双路变红 + 恢复回绿 |
+| 新增门禁 verify_vfd_ip67 | 119/119 |
+| 反向破坏（默认改ON/拆M2/拆大小写/拆S7取值/允许编造/改载波默认/改风机默认） | 七场景双路变红 + 恢复回绿 |
 | l0 verify 全量 | 135/135 |
 | verify_tw_axis / verify_bg_bins_calib | 40/40 / 22/22 |
 | core tests / 真值门禁 | 26/26 / 18/18 |

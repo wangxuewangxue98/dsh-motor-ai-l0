@@ -35,7 +35,9 @@ import { predictAnalyticBatch, analyticModeOf, ANALYTIC_MINC } from './analytic-
 import { getUsageSink, logUsage } from '@wangxue98/dsh-motor-ai-core'
 import { assertFreeQuota, QuotaExceededError } from '../../lib/quota.mjs'
 import { assessApplicability, scenarioFromMatrix } from '@wangxue98/dsh-motor-ai-core'
-import { resolveVfdSpec, resolveIp67Spec, runVfdIp67 } from './vfd-ip67-model.mjs'
+import {
+  resolveVfdSpec, resolveIp67Spec, runVfdIp67, CARRIER_DEFAULT_KHZ,
+} from './vfd-ip67-model.mjs'
 
 /** 工具入参声明 */
 export const TOOL_PARAMS = {
@@ -62,7 +64,9 @@ export const TOOL_PARAMS = {
     type: 'object',
     description: 'v0.6.8 P2：变频驱动建模（M1~M7）。默认 OFF（env DSH_L0_VFD 亦可开）。'
       + '给出本对象即视为开启。字段：filter(none/dvdt/sine) | cable_m | k_h(显式覆盖) | '
-      + 'fan(self/independent) | min_speed_rpm | dc_bus_v | shaft_current_a | bearing | '
+      + 'fan(self/independent，**未声明默认 independent=变频电机独立风机**) | '
+      + `carrier_khz(**默认 ${CARRIER_DEFAULT_KHZ}Hz，仅记录，k_h 不随其变化**) | `
+      + 'min_speed_rpm | dc_bus_v | shaft_current_a | bearing | '
       + 'insulation_coordination_margin | surge_withstand_ratio | insulation_life_years | '
       + 'emc_margin_db | immunity_level | control | field_weakening_ratio | torque_bandwidth_hz | '
       + 'dead_time_us | kh_basis(total/electromagnetic) | kh_scan | th_band_lookup | target_temp_rise。'
