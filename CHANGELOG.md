@@ -9,7 +9,7 @@
 
 > **性质：additive（winding-lock 默认 OFF 零回归）+ 参数缺省调整（count 20→1000，候选池放大，需知情）。**
 
-1. **P2-A 绕组锁定 `winding-lock`**（core `formula-engine.mjs`，env `DSH_L0_WINDING_LOCK` / opts `windingLock`，**默认 OFF**）：
+1. **P2-A 绕组锁定 `winding-lock`**（core **1.5.0** `formula-engine.mjs`，env `DSH_L0_WINDING_LOCK` / opts `windingLock`，**默认 OFF**）：
    - 修复 `deriveElectricalClosure` **静默覆盖入参绕组**：原实现只按 E 平衡重算匝数
      （`turnsIdeal = uph/(4.44·f·φ·kw)` 后 `round()`），`params.turns_per_coil` /
      `params.conductors_per_slot` 从未被消费（实测入参 6/24/144 输出逐位相同）。
