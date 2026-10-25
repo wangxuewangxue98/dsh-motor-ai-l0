@@ -19,7 +19,8 @@
     "README.md",
     "LICENSE",
     "!models/experience",
-    "!scripts/loss_calib*_result.json"
+    "!scripts/loss_calib*_result.json",
+    "!**/*.bak*"
   ],
   "exports": {
     ".": "./index.mjs",
