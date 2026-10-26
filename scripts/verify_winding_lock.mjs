@@ -64,9 +64,13 @@ ok('零回归：lock OFF 时 Bg_eff 保持旧路径（≈0.79 附近，非 0.325
 }
 
 // 6. 入参消费（turns 输出入参值而非重算值）
-ok('入参消费：lock ON 时 turns_per_coil=72（=cps/2，非重算 34）', eOn.turns_per_coil === 72,
+ok('入参消费：lock ON 时 turns_per_coil=72（=cps/2，非重算 43）', eOn.turns_per_coil === 72,
   `turns=${eOn.turns_per_coil}`)
-ok('入参消费：lock OFF 时 turns_per_coil=34（重算值不变）', eOff.turns_per_coil === 34,
+// P0-3（core 1.5.2）极数分档 Bg 标定改了 airGapFlux → turnsIdeal，
+// lock OFF 重算匝数 34 → 43（确定性新值）。锚点同步刷新 + 行为断言加固。
+const LOCK_OFF_TURNS_RECOMPUTED = 43
+ok('入参消费：lock OFF 时 turns_per_coil 走重算（≠入参144，=43）',
+  eOff.turns_per_coil === LOCK_OFF_TURNS_RECOMPUTED && eOff.turns_per_coil !== ROW.turns_per_coil,
   `turns=${eOff.turns_per_coil}`)
 
 // 7. kw_eff 双通道
