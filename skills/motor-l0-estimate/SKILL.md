@@ -22,7 +22,7 @@ whenToUse: >
 user-invocable: true
 metadata:
   author: Motor-AI
-  version: 0.6.9
+  version: 0.6.10
   level: l0
   tier: free
 ---
@@ -101,6 +101,8 @@ L0 的几何/磁密/反电势模型按**工频中压异步电机**标定。超�
 | `ip67` | ⬜ | v0.6.8：IP67 结构技术点 S1~S8 登记与可喂入项抽取（IEC 60034-5 / GB/T 4942.1），默认关闭（env `DSH_L0_IP67`） |
 | `vfd_measures` | ⬜ | v0.6.8：仅 `vfd` 开启时生效。评估四项降损措施（滤波器 / 独立风机 / 加大机座 / 低损耗硅钢）各自降温效果 |
 | `slot_tw` | ⬜ | v0.6.9（需 core ≥1.5.3）：**单一齿宽口径**——槽几何消费 row.tooth_width 与 Bt 公式同源同值，消除 Bt/fill 双齿宽解耦 Artifact。默认 false（env `DSH_L0_SLOT_TW`）。开启后 tw_axis 池行 fill 按真实齿宽重算（诚实口径，可能有一道回落） |
+| `tooth_peak_gate` | ⬜ | v0.6.10（需 core ≥1.5.4）：**齿磁密峰值口径门禁**，默认 true（env `DSH_L0_TOOTH_PEAK_GATE=0` 可关）。既有「齿磁密」是**极内平均**口径（Φ=每极磁通含 2/π），与硅钢饱和限/RMxprt 报告的**峰值**口径差 π/2≈1.571 ⇒ 窄齿方案实际深度饱和却显示"达标"（300kW 实证：平均 1.61T ⇒ 峰值 2.53T，超饱和限 33%）。开启后对峰值 >1.9T 额外挂 V07 告警；既有对 1.02T 平均目标的判定不动。行内新增 `tooth_flux_density_peak` / `tooth_flux_density_intent_peak` / `yoke_flux_density_peak` / `tooth_peak_sat` / `flux_density_caliber`。⚠ 告警经 `motor_design_validate` 观测（`motor_l0_estimate` 结果行不回吐规则告警） |
+| `back_emf_drop` | ⬜ | v0.6.10（需 core ≥1.5.4）：**反电动势压降系数 k_E=E/Uph（匝数反标）**，默认 1.0 = 零回归。turnsIdeal 按 E=Uph 反解忽略定子漏抗+电阻压降 ⇒ 匝数系统性偏多；RMxprt 实测（300kW/690V/6P）0.883(I=247A)/0.857(I=392A)，一阶取 0.88。仅回显 `turns_per_coil_ideal_at_load`（= ideal×k_E），**不改写** turnsIdeal。⚠ 不覆盖「Bg 目标本身不足」：300kW 出力不足的主因是 Bg 分档 0.575 < 该体积达标所需 ~0.78T（solve_turns 按意图 Bg=0.8 得 2.329 匝，接近 RMxprt 达标所需的 2 匝），**绝对出力必须由 L1(RMxprt) 实跑确认** |
 
 **极数推荐口径**：高速（≥12000rpm）一律 2 极。
 永磁同步机**不存在 1 极** —— 若用户口径出现 1 极，按 2 极处理并说明

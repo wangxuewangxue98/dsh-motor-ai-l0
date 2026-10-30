@@ -83,6 +83,20 @@ export const TOOL_PARAMS = {
       + 'slot_family）返回该杠杆的「影响指标/调节方向/耦合提示/关联规则 Vxx」。纯本地数据查询，'
       + '用于「想拧 X 之前先知道它会动哪些指标」',
   },
+  tooth_peak_gate: {
+    type: 'boolean',
+    description: 'v0.6.10 P0-8（需 core ≥1.5.4）：齿磁密峰值口径门禁。既有「齿磁密」是极内平均口径'
+      + '（Φ=每极磁通含 2/π），与硅钢饱和限/RMxprt 报告的峰值口径差 π/2≈1.571 ⇒ 窄齿方案实际'
+      + '深度饱和却显示"达标"（300kW 实证：平均 1.61T ⇒ 峰值 2.53T，超饱和限 33%）。'
+      + '开启后对峰值 >1.9T 的行额外挂 V07 告警；既有对 1.02T 平均目标的判定不动。默认 true。',
+  },
+  back_emf_drop: {
+    type: 'number',
+    description: 'v0.6.10 P0-8（需 core ≥1.5.4）：反电动势压降系数 k_E=E/Uph（匝数反标）。'
+      + 'turnsIdeal 按 E=Uph 反解忽略定子漏抗压降 ⇒ 匝数偏多。RMxprt 实测 0.883/0.857，一阶取 0.88。'
+      + '默认 1.0=零回归；仅回显 turns_ideal_at_load，不改写 turnsIdeal。'
+      + '⚠ 不覆盖「Bg 目标本身不足」，绝对出力须由 L1 实跑确认。',
+  },
 }
 
 /**
@@ -109,6 +123,9 @@ function probeRow(row, opts, config = {}) {
         maxTempClamp: config.tempRiseRange ?? [45, 130],
         ...(row?.insulation_class ? { insulationClass: String(row.insulation_class).toUpperCase() } : {}),
         ...(Number.isFinite(Number(row?.line_freq_hz)) ? { lineFreqHz: Number(row.line_freq_hz) } : {}),
+        // P0-8：就地构造不继承外层 opts ⇒ 两个新开关必须在此显式注入（记忆教训：漏了会静默无效）
+        ...(opts?.toothPeakGate === false ? { toothPeakGate: false } : {}),
+        ...(Number.isFinite(Number(opts?.backEmfDrop)) ? { backEmfDrop: Number(opts.backEmfDrop) } : {}),
       })
     } catch { return null }
   })()
@@ -209,12 +226,23 @@ export function runSolveTurns(params, opts, config = {}) {
       turns_ideal: sol.turns_ideal, turns_int: sol.turns_int,
       quant_dev: sol.quant_dev,
       e_ideal_v: sol.e_ideal_v, e_int_v: sol.e_int_v, dev_int: sol.dev_int,
+      // v0.6.10 P0-8：匝数反标（反电动势压降 k_E=E/Uph）。默认 1.0 ⇒ at_load 与 ideal 同值。
+      // ⚠ 注意口径：solve_turns 用**设计意图 Bg**（默认 0.80T），而 l0-estimate 主估算
+      //   走 Bg 极数分档（6P=0.575）⇒ 同一台机两处 ideal 匝数不同（300kW 实证：
+      //   2.329 vs 3.241，比值 1.392 = 0.8/0.575）。差异源是 Bg 目标，不是公式错误，
+      //   选型时须显式确认用哪个 Bg 口径（大机座分档值偏低会直接导致出力不足）。
+      back_emf_drop_factor: Number.isFinite(Number(opts?.backEmfDrop)) ? Number(opts.backEmfDrop) : 1,
+      turns_ideal_at_load: Number.isFinite(Number(opts?.backEmfDrop))
+        ? Math.round(sol.turns_ideal * Number(opts.backEmfDrop) * 1000) / 1000 : sol.turns_ideal,
+      air_gap_flux_used: Number.isFinite(Number(opts?.airGapFlux)) ? Number(opts.airGapFlux) : null,
     },
     integer_options: options,
     recommendation: sol.turns_int,
     note: 'turns_ideal 为电气闭环理想匝；integer_options 是反电势偏差在容差内的可取整域，'
       + '每项已带整行校验结论（status）与估算指标。匝数同时影响槽满率（V15）与磁密（V07/V08），'
-      + '取整后务必看 options 内的 status，不要只看反电势偏差。',
+      + '取整后务必看 options 内的 status，不要只看反电势偏差。'
+      + '⚠ P0-8：本原语按**设计意图 Bg** 反解，与 l0-estimate 的 Bg 极数分档口径可能不同'
+      + '（300kW/6P 实证 2.329 vs 3.241），比对前先对齐 Bg 口径。',
   }
 }
 
@@ -315,6 +343,13 @@ export function runDesignValidate(rawArgs, config = {}) {
     includeThermal: args.include_thermal === false ? false : true,
     efficiencyCap: config.efficiencyCap,
     maxTempClamp: config.tempRiseRange,
+    // v0.6.10 P0-8：齿部峰值口径门禁（默认 ON，显式 false 关闭）+ 匝数反标 k_E（默认 1.0）
+    toothPeakGate: args.tooth_peak_gate === false || args.tooth_peak_gate === 'false'
+      ? false : (config.toothPeakGate === false ? false : undefined),
+    backEmfDrop: (() => {
+      const v = Number(args.back_emf_drop ?? config.backEmfDrop)
+      return Number.isFinite(v) && v > 0 && v <= 1 ? v : undefined
+    })(),
   }
 
   // ---- v0.5.5 P2-3 杠杆知识库查询（纯本地数据；优先级最高，一次调用=一次额度）----

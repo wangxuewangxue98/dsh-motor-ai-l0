@@ -45,6 +45,8 @@ export const TOOL_PARAMS = {
   tw_axis_targets: { type: 'array', description: 'v0.6.7 L2：目标齿磁密 (T) 列表，默认 [1.55,1.2]（1.55=EM0103 带宽中心）。按各行极数的分档 Bg 反解齿宽乘子；控制档（派生齿宽）恒保留' },
   tw_axis_factors: { type: 'array', description: 'v0.6.7 L2：齿宽乘子列表（相对派生齿宽），显式给出时优先于 tw_axis_targets；钳 [0.5,1.0]（<0.5×派生 ⇒ RMxprt 槽形反驱出倒梯形槽，物理不可下线）' },
   slot_tw: { type: 'boolean', description: 'v0.6.9 P0-7（需 core ≥1.5.3）：单一齿宽口径——槽几何消费 row.tooth_width 与 Bt 公式同源同值，消除 Bt/fill 双齿宽解耦 Artifact（齿统一 8.77 ⇒ Bt=0.807T 挂；齿统一 4.39 ⇒ fill=0.330 挂）。默认 false（env DSH_L0_SLOT_TW 亦可开）' },
+  tooth_peak_gate: { type: 'boolean', description: 'v0.6.10 P0-8（需 core ≥1.5.4）：齿磁密峰值口径门禁。既有「齿磁密」是极内平均口径，与硅钢饱和限/RMxprt 报告的峰值口径差 π/2≈1.571；开启后对峰值 >1.9T 的行额外挂 V07 告警（既有判定不动）。默认 true（env DSH_L0_TOOTH_PEAK_GATE=0 可关）' },
+  back_emf_drop: { type: 'number', description: 'v0.6.10 P0-8（需 core ≥1.5.4）：反电动势压降系数 k_E=E/Uph（匝数反标，RMxprt 实测 0.88，一阶值）。默认 1.0=零回归；仅回显 turns_per_coil_ideal_at_load，不改写 turnsIdeal。⚠ 不覆盖「Bg 目标本身不足」，绝对出力须由 L1 实跑确认' },
   top_n: { type: 'number', description: '回吐前 N 个方案，默认 10（聚合工具已封顶，避免回吐全量触发截断）' },
   sort_by: {
     type: 'string',
@@ -161,6 +163,9 @@ export function runL0Pipeline(rawArgs, config = {}) {
     ...(args.vfd_measures != null ? { vfd_measures: args.vfd_measures } : {}),
     // v0.6.9 P0-7：单一齿宽口径透传（core 1.5.3 slotTw）
     ...(args.slot_tw != null ? { slot_tw: args.slot_tw } : {}),
+    // v0.6.10 P0-8：齿部峰值门禁 + 匝数反标 k_E 透传（core 1.5.4）
+    ...(args.tooth_peak_gate != null ? { tooth_peak_gate: args.tooth_peak_gate } : {}),
+    ...(args.back_emf_drop != null ? { back_emf_drop: args.back_emf_drop } : {}),
   }, chainCfg)
 
   // ---- v0.5.3 P0-1：密度收敛自检（默认 OFF）----

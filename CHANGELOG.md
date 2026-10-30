@@ -5,6 +5,54 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.6.10] - 2026-10-31 — P0-8 磁密口径统一（齿部峰值）+ 匝数反标 k_E（需 core ≥1.5.4）
+
+> 承接 300kW 风机异步机方案的 L1（RMxprt）实跑验证结论，修两处会直接导致「假达标」的模型缺陷。
+> 依赖：`@wangxue98/dsh-motor-ai-core` 升至 `^1.5.4`。
+
+### Added（磁密口径统一）
+- 新参数 `tooth_peak_gate`（默认 **true**，env `DSH_L0_TOOTH_PEAK_GATE=0` 可关）。
+  既有「齿磁密」是**极内平均**口径（分子 Φ=每极磁通 ⇒ 含 2/π），而硅钢饱和限、
+  RMxprt/FEA 报告、以及 core 内 V08 的 1.9T 饱和限都是**极中心齿峰值** ⇒ 差 π/2≈1.571。
+  **300kW 实证**：平均 1.61T（显示"达标"）⇒ 峰值 **2.53T，超硅钢饱和限 33%**。
+- 行内新增字段：`tooth_flux_density_peak`（峰值口径）、`tooth_flux_density_intent_peak`、
+  `yoke_flux_density_peak`（= `yoke_flux_density_actual`，轭式本身即峰值口径，禁止再乘 π/2）、
+  `flux_density_caliber`、`tooth_peak_sat`。
+- 既有「对 FLUX_TARGET.tooth=1.02T 平均目标的偏离判定」**原样保留不动**（零回归）。
+- ⚠ **告警观测面**：`motor_l0_estimate` 结果行不回吐规则告警 ⇒ `tooth_peak_gate` 的
+  告警效果须经 `motor_design_validate` 观测（门禁 §2b 覆盖）。
+
+### Added（匝数反标）
+- 新参数 `back_emf_drop`（k_E=E/Uph，默认 **1.0 = 零回归**）。turnsIdeal 按 E=Uph 反解，
+  忽略定子漏抗+电阻压降 ⇒ 匝数系统性偏多。RMxprt 实测（300kW/690V/6P）：
+  0.883(I=247A) / 0.857(I=392A)，一阶取 0.88。非法值（>1/≤0/NaN）回落 1.0。
+- 行内/工具新增回显：`back_emf_drop_factor`、`back_emf_drop_ref`(0.88)、
+  `turns_per_coil_ideal`、`turns_per_coil_ideal_at_load`；
+  `motor_design_validate` 的 `metrics.back_emf` 与 `solve_turns.electrical` 同步回吐。
+- **只回显、不改写 turnsIdeal**（改写会连锁 bgActual/V17/winding-lock，需 ≥30 台大机真值标定）。
+
+### 🔴 关键发现（Bg 口径差异，影响选型决策）
+- `solve_turns` 按**设计意图 Bg=0.8** 反解得 **2.329 匝**（300kW/6P），
+  `motor_l0_estimate` 按**极数分档 Bg=0.575** 得 **3.241 匝**，比值 1.392 = 0.8/0.575。
+  **差异源是 Bg 目标，不是公式错误**。而 RMxprt 实跑表明该体积达标需 Bg≈0.78T、2 匝
+  ⇒ **300kW 出力不足的主因是 Bg 分档值对大机座偏低**，k_E 仅解释其中约 5%。
+- 结论：**L0 无法判定「该 Bg 下能否出 spec 功率」**，不得以 `feasible=true` 代替 L1 实跑。
+  Bg 分档目前只有极数维度、缺功率维度（真值子集以小机为主），列为待标定项。
+
+### 门禁
+- 新增 `scripts/verify_flux_caliber.mjs` **47/47**：
+  §1 源码锚点 / §2 args 通道（字段恒有、π/2 恒等式、窄齿 vs 宽齿区分力）
+  / §2b **告警侧区分力**（design-validate：ON 挂 V07 峰值告警、OFF 消失、宽齿不挂）
+  / §2c solve_turns 反标 + **Bg 口径差异披露**（3.241/2.329=1.392 vs 0.8/0.575=1.391）
+  / §3 k_E（默认 1.0、0.88 生效、只回显不改写、非法回落）/ §4 env 双通道
+  / §5 pipeline 透传 / §6 300kW 实证锚点（峰值 2.53T 超饱和限 33%）。
+- 反向破坏 `dev-calib/_break_flux_caliber_0610.mjs` **七场景全部如期变红并恢复回绿**
+  （S1 2红 / S2 4红 / S3 1红 / S4 1红 / S5 1红 / S6 1红 / S7 2红）。
+- 全量回归：verify **135/135**、bg_bins **22/22**、tw_axis **40/40**、vfd_ip67 **119/119**、
+  winding_lock **14/14**、slot_tw **18/18**、flux_caliber **47/47**。
+- `scripts/regression.mjs` 的 `DEBT + REGRESSION` 经 `git stash` 对照确认为**既有债务**
+  （改动前后逐项一致），与本次无关。
+
 ## [0.6.9] - 2026-10-30 — P0-7：单一齿宽口径（槽几何消费 row.tooth_width）
 
 > **依赖 core ≥1.5.3**（P0-7 开关在 core 侧实现：opts.slotTw / env DSH_L0_SLOT_TW，默认 OFF）。

@@ -93,6 +93,22 @@ export const TOOL_PARAMS = {
       + '默认 false（env DSH_L0_SLOT_TW 亦可开）。行内新增 slot_tooth_width_mm / slot_area_mm2 / '
       + 'slot_tw_caliber(explicit|derived_resolved|legacy_derived) 三字段可核查。',
   },
+  tooth_peak_gate: {
+    type: 'boolean',
+    description: 'v0.6.10 P0-8（需 core ≥1.5.4）：齿磁密峰值口径门禁。既有「齿磁密」是极内平均口径'
+      + '（Φ=每极磁通含 2/π），而硅钢饱和限与 RMxprt/FEA 报告是极中心齿峰值口径 ⇒ 差 π/2≈1.571。'
+      + '开启后对峰值 >1.9T 的行额外挂 V07 告警（既有对 1.02T 平均目标的判定不动，零回归）。'
+      + '默认 true（env DSH_L0_TOOTH_PEAK_GATE=0 可关）。行内新增 tooth_flux_density_peak / '
+      + 'tooth_flux_density_intent_peak / yoke_flux_density_peak / tooth_peak_sat / flux_density_caliber。',
+  },
+  back_emf_drop: {
+    type: 'number',
+    description: 'v0.6.10 P0-8（需 core ≥1.5.4）：反电动势压降系数 k_E=E/Uph（匝数反标）。'
+      + 'turnsIdeal 按 E=Uph 反解会忽略定子漏抗+电阻压降 ⇒ 匝数系统性偏多、满载磁通偏低。'
+      + 'RMxprt 实测（300kW/690V/6P）：0.883(I=247A)/0.857(I=392A)，一阶取 0.88。'
+      + '默认 1.0 = 零回归；仅回显 turns_per_coil_ideal_at_load，不改写 turnsIdeal。'
+      + '⚠ 该反标不覆盖「Bg 目标本身不足」，绝对出力须由 L1(RMxprt) 实跑确认。',
+  },
   baseline_params: {
     type: 'object',
     additionalProperties: true,
@@ -258,6 +274,10 @@ function compareWithBaseline(current, baseline, config = {}) {
     maxTempClamp,
     // P0-7（core 1.5.3）：单一齿宽口径——compare 侧经 config.slotTw 透传
     ...(config.slotTw ? { slotTw: true } : {}),
+    // P0-8（core 1.5.4）：齿部峰值门禁（默认 ON，显式 false 才关）+ 反电动势压降 k_E
+    ...(config.toothPeakGate === false ? { toothPeakGate: false } : {}),
+    ...(Number.isFinite(Number(config.backEmfDrop)) && Number(config.backEmfDrop) > 0 && Number(config.backEmfDrop) <= 1
+      ? { backEmfDrop: Number(config.backEmfDrop) } : {}),
     ...(row?.insulation_class ? { insulationClass: String(row.insulation_class).toUpperCase() } : {}),
     ...(Number.isFinite(Number(row?.line_freq_hz)) ? { lineFreqHz: Number(row.line_freq_hz) } : {}),
     ...(!row?.insulation_class && config.insulationClass
@@ -380,6 +400,10 @@ export function runL0Estimate(rawArgs, config = {}) {
     return compareWithBaseline(current, args.baseline_params, {
       ...config,
       ...((args.slot_tw === true || args.slot_tw === 'true') ? { slotTw: true } : {}),
+      // P0-8：compare 前后两侧必须同口径，否则对比基线漂移
+      ...((args.tooth_peak_gate === false || args.tooth_peak_gate === 'false') ? { toothPeakGate: false } : {}),
+      ...(Number.isFinite(Number(args.back_emf_drop)) && Number(args.back_emf_drop) > 0 && Number(args.back_emf_drop) <= 1
+        ? { backEmfDrop: 1 } : {}),
     })
   }
   const paramsList = Array.isArray(args.params_list) ? args.params_list : []
@@ -405,6 +429,10 @@ export function runL0Estimate(rawArgs, config = {}) {
     // P0-7（core 1.5.3）：单一齿宽口径——槽几何消费 row.tooth_width，消除 Bt/fill 双齿宽并存。
     // args.slot_tw（true/'true'）⇒ opts 通道；env DSH_L0_SLOT_TW 由 core 直读（双通道各管各的）。
     ...((args.slot_tw === true || args.slot_tw === 'true') ? { slotTw: true } : {}),
+    // P0-8（core 1.5.4）：齿部峰值门禁（默认 ON；显式 false/'false' 才关）+ 反电动势压降 k_E（默认 1.0）。
+    ...((args.tooth_peak_gate === false || args.tooth_peak_gate === 'false') ? { toothPeakGate: false } : {}),
+    ...(Number.isFinite(Number(args.back_emf_drop)) && Number(args.back_emf_drop) > 0 && Number(args.back_emf_drop) <= 1
+      ? { backEmfDrop: Number(args.back_emf_drop) } : {}),
     ...(row?.insulation_class ? { insulationClass: String(row.insulation_class).toUpperCase() } : {}),
     ...(Number.isFinite(Number(row?.line_freq_hz)) ? { lineFreqHz: Number(row.line_freq_hz) } : {}),
     ...(!row?.insulation_class && config.insulationClass
