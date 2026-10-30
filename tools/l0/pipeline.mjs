@@ -44,6 +44,7 @@ export const TOOL_PARAMS = {
   tw_axis: { type: 'boolean', description: 'v0.6.7 L2：开启 tooth_width 候选维度（显式齿宽通道进池），默认 false（env DSH_L0_TW_AXIS 亦可开）。每行在派生齿宽之外追加目标齿磁密反解的齿宽档，使齿磁密 Bt 可覆盖 EM0103 带宽 [1.4,1.7]T —— 默认池 Bt 恒 ≈0.72~0.81T，达标设计在池内不存在' },
   tw_axis_targets: { type: 'array', description: 'v0.6.7 L2：目标齿磁密 (T) 列表，默认 [1.55,1.2]（1.55=EM0103 带宽中心）。按各行极数的分档 Bg 反解齿宽乘子；控制档（派生齿宽）恒保留' },
   tw_axis_factors: { type: 'array', description: 'v0.6.7 L2：齿宽乘子列表（相对派生齿宽），显式给出时优先于 tw_axis_targets；钳 [0.5,1.0]（<0.5×派生 ⇒ RMxprt 槽形反驱出倒梯形槽，物理不可下线）' },
+  slot_tw: { type: 'boolean', description: 'v0.6.9 P0-7（需 core ≥1.5.3）：单一齿宽口径——槽几何消费 row.tooth_width 与 Bt 公式同源同值，消除 Bt/fill 双齿宽解耦 Artifact（齿统一 8.77 ⇒ Bt=0.807T 挂；齿统一 4.39 ⇒ fill=0.330 挂）。默认 false（env DSH_L0_SLOT_TW 亦可开）' },
   top_n: { type: 'number', description: '回吐前 N 个方案，默认 10（聚合工具已封顶，避免回吐全量触发截断）' },
   sort_by: {
     type: 'string',
@@ -158,6 +159,8 @@ export function runL0Pipeline(rawArgs, config = {}) {
     ...(args.vfd != null ? { vfd: args.vfd } : {}),
     ...(args.ip67 != null ? { ip67: args.ip67 } : {}),
     ...(args.vfd_measures != null ? { vfd_measures: args.vfd_measures } : {}),
+    // v0.6.9 P0-7：单一齿宽口径透传（core 1.5.3 slotTw）
+    ...(args.slot_tw != null ? { slot_tw: args.slot_tw } : {}),
   }, chainCfg)
 
   // ---- v0.5.3 P0-1：密度收敛自检（默认 OFF）----

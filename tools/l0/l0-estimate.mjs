@@ -86,6 +86,13 @@ export const TOOL_PARAMS = {
       + '（①dv/dt 或正弦波滤波器 ②独立风机/加大风量 ③加大机座或铁心 ④低损耗硅钢/优化绕组）'
       + '各自降温效果与达标性。措施③为几何变更，会触发重估（仅限返回行，不影响配额）。',
   },
+  slot_tw: {
+    type: 'boolean',
+    description: 'v0.6.9 P0-7（需 core ≥1.5.3）：单一齿宽口径——槽几何消费 row.tooth_width，'
+      + '与 Bt 公式同源同值，消除「Bt 用 tw_axis 值 4.39 / fill 用派生值 8.77」的双齿宽解耦 Artifact。'
+      + '默认 false（env DSH_L0_SLOT_TW 亦可开）。行内新增 slot_tooth_width_mm / slot_area_mm2 / '
+      + 'slot_tw_caliber(explicit|derived_resolved|legacy_derived) 三字段可核查。',
+  },
   baseline_params: {
     type: 'object',
     additionalProperties: true,
@@ -249,6 +256,8 @@ function compareWithBaseline(current, baseline, config = {}) {
   const estimateOpts = (row) => ({
     efficiencyCap,
     maxTempClamp,
+    // P0-7（core 1.5.3）：单一齿宽口径——compare 侧经 config.slotTw 透传
+    ...(config.slotTw ? { slotTw: true } : {}),
     ...(row?.insulation_class ? { insulationClass: String(row.insulation_class).toUpperCase() } : {}),
     ...(Number.isFinite(Number(row?.line_freq_hz)) ? { lineFreqHz: Number(row.line_freq_hz) } : {}),
     ...(!row?.insulation_class && config.insulationClass
@@ -367,7 +376,11 @@ export function runL0Estimate(rawArgs, config = {}) {
     if (!current) {
       throw new Error('[motor_l0_estimate] compare 模式需提供 params（改后单对象）或 params_list[0]')
     }
-    return compareWithBaseline(current, args.baseline_params, config)
+    // P0-7：compare 模式同样透传 slot_tw（前后两侧同口径，避免对比基线漂移）
+    return compareWithBaseline(current, args.baseline_params, {
+      ...config,
+      ...((args.slot_tw === true || args.slot_tw === 'true') ? { slotTw: true } : {}),
+    })
   }
   const paramsList = Array.isArray(args.params_list) ? args.params_list : []
   const sortBy = SORTABLE_FIELDS.includes(args.sort_by) ? args.sort_by : 'efficiency'
@@ -389,6 +402,9 @@ export function runL0Estimate(rawArgs, config = {}) {
   const estimateOpts = (row) => ({
     efficiencyCap,
     maxTempClamp,
+    // P0-7（core 1.5.3）：单一齿宽口径——槽几何消费 row.tooth_width，消除 Bt/fill 双齿宽并存。
+    // args.slot_tw（true/'true'）⇒ opts 通道；env DSH_L0_SLOT_TW 由 core 直读（双通道各管各的）。
+    ...((args.slot_tw === true || args.slot_tw === 'true') ? { slotTw: true } : {}),
     ...(row?.insulation_class ? { insulationClass: String(row.insulation_class).toUpperCase() } : {}),
     ...(Number.isFinite(Number(row?.line_freq_hz)) ? { lineFreqHz: Number(row.line_freq_hz) } : {}),
     ...(!row?.insulation_class && config.insulationClass

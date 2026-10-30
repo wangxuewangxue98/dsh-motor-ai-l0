@@ -22,7 +22,7 @@ whenToUse: >
 user-invocable: true
 metadata:
   author: Motor-AI
-  version: 0.6.8
+  version: 0.6.9
   level: l0
   tier: free
 ---
@@ -100,6 +100,7 @@ L0 的几何/磁密/反电势模型按**工频中压异步电机**标定。超�
 | `vfd` | ⬜ | v0.6.8：**变频驱动建模（M1~M7），默认关闭**（env `DSH_L0_VFD` 亦可开）。⚠ L0 原按 50Hz 理想正弦计算，既有温升是**正弦工况值非实机值**。开启后仅新增 `*_vfd` 字段，不覆写既有字段 |
 | `ip67` | ⬜ | v0.6.8：IP67 结构技术点 S1~S8 登记与可喂入项抽取（IEC 60034-5 / GB/T 4942.1），默认关闭（env `DSH_L0_IP67`） |
 | `vfd_measures` | ⬜ | v0.6.8：仅 `vfd` 开启时生效。评估四项降损措施（滤波器 / 独立风机 / 加大机座 / 低损耗硅钢）各自降温效果 |
+| `slot_tw` | ⬜ | v0.6.9（需 core ≥1.5.3）：**单一齿宽口径**——槽几何消费 row.tooth_width 与 Bt 公式同源同值，消除 Bt/fill 双齿宽解耦 Artifact。默认 false（env `DSH_L0_SLOT_TW`）。开启后 tw_axis 池行 fill 按真实齿宽重算（诚实口径，可能有一道回落） |
 
 **极数推荐口径**：高速（≥12000rpm）一律 2 极。
 永磁同步机**不存在 1 极** —— 若用户口径出现 1 极，按 2 极处理并说明

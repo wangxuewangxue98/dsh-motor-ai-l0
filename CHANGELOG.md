@@ -5,6 +5,34 @@
 
 版本三重一致性：`package.json.version` = `SKILL.md` 的 `metadata.version` = `CHANGELOG.md` 最新条目。
 
+## [0.6.9] - 2026-10-30 — P0-7：单一齿宽口径（槽几何消费 row.tooth_width）
+
+> **依赖 core ≥1.5.3**（P0-7 开关在 core 侧实现：opts.slotTw / env DSH_L0_SLOT_TW，默认 OFF）。
+> 根因（300kW 风机异步机方案实证）：Bt 公式吃 row.tooth_width（tw_axis 值 4.39mm），
+> 槽几何硬编码 π·Di/(2Qs)=8.77mm ⇒ 同一次估算并存两个互斥齿宽：
+> 齿统一 8.77 ⇒ Bt=0.807T 挂；齿统一 4.39 ⇒ fill=0.330 挂 ——
+> **Bt 与 fill「双达标」是解耦 Artifact，单一自洽齿宽下两闸门必挂一道**。
+
+### Added
+- 新参数 `slot_tw`（boolean，默认 false；env `DSH_L0_SLOT_TW` 亦可开）：
+  开启后槽几何与 Bt 公式消费**同一齿宽**（单一口径），Bt/fill 判定回到同一张冲片上。
+- 行内新增三字段（随所有通道输出）：`slot_tooth_width_mm`（槽几何实际消费齿宽）、
+  `slot_area_mm2`（外接矩形毛槽面积）、`slot_tw_caliber` 三态
+  `explicit`（row 值，与 Bt 同源）/ `derived_resolved`（row 未带，兜底同源）/
+  `legacy_derived`（开关 OFF 旧行为；此时 row 带 tooth_width 即双齿宽并存）。
+- `motor_l0_estimate` compare 模式同步透传（改后/基线两侧同口径，避免对比漂移）。
+- ⚠ 诚实披露：开启 `slot_tw` 后，tw_axis 池内行的 fill 将按真实齿宽重算 ——
+  此前「Bt 与 fill 同时达标」的行会有一道回落（300kW 方案：fill 0.464→0.330）。
+  这是口径修正而非退化：修正前的 fill 是用另一张冲片算的。
+
+### 门禁
+- 新增 `scripts/verify_slot_tw.mjs` **18/18**：静态锚点 / l0 args 双态 /
+  'true' 字符串通道 / env 直读与 opts 双向胜出 / 槽面积手算判据（946.1mm²）/
+  单一齿宽闭环（OFF 双齿宽实证 + ON 闭环）/ compare 透传。
+- 反向破坏：拆 l0 透传 ⇒ 7 红；恢复回绿。core 侧 9/9 + 双路破坏（3 红/5 红）。
+- 全量回归：verify 135/135、tw_axis 40/40、bg_bins 22/22、vfd_ip67 119/119、
+  winding_lock 14/14。
+
 ## [0.6.8] - 2026-10-26 — P2：变频驱动建模（M1~M7）+ IP67 结构技术点（S1~S8）
 
 > **性质：additive 新开关（`vfd` / `ip67` 默认 OFF，默认路径逐字节零回归 —— 门禁 J3/J4 实证）。**
